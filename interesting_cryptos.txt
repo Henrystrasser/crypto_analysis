@@ -1,0 +1,102 @@
+Lade historische 1h-Daten für UNI/USDT für die letzten 580 Tage (dies kann einen Moment dauern)...
+
+--- ERGEBNISSE (Langzeittest mit Muster-Check) ---
+Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
+Anzahl analysierter Tage: 580
+Tage, an denen es früh billiger war: 258 (44.5%)
+Tage mit positivem Pattern-Match (Case 1/2): 289 (49.8%)
+Durchschnittliche prozentuale Änderung: -0.10%
+
+--- SIMULATION STARTET (2021-01-01 bis 2026-12-31) ---
+Startkapital: 10,000.00 USDT
+Anzahl Handels-Tage im Test: 2079
+
+[1] Ohne Gebühren:
+Endkapital: 127,082.80 USDT
+Gewinn/Verlust: +117,082.80 USDT (1170.83%)
+
+[2] Mit Gebühr (0.1% pro Trade):
+Endkapital: 1,985.28 USDT
+Gewinn/Verlust: -8,014.72 USDT (-80.15%)
+Gebühren-Fress-Effekt: 125,097.53 USDT Unterschied
+
+Lade historische Daten für UNI/USDT ab dem 2021-01-01...
+
+Offset 7!!
+--- SIMULATION STARTET (2021-01-01 bis 2026-12-31) ---
+Startkapital: 10,000.00 USDT
+Anzahl Handels-Tage im Test: 2078
+
+[1] Ohne Gebühren:
+Endkapital: 218,289.12 USDT
+Gewinn/Verlust: +208,289.12 USDT (2082.89%)
+
+[2] Mit Gebühr (0.1% pro Trade):
+Endkapital: 95,081.77 USDT
+Gewinn/Verlust: +85,081.77 USDT (850.82%)
+Gebühren-Fress-Effekt: 123,207.34 USDT Unterschied
+
+
+
+
+
+Lade historische 1h-Daten für POL/USDT für die letzten 580 Tage (dies kann einen Moment dauern)...
+
+--- ERGEBNISSE (Langzeittest mit Muster-Check) ---
+Getestetes Intervall: Start um Stunde 7:00, Ende um Stunde 19:00 (Offset: 7h)
+Anzahl analysierter Tage: 579
+Tage, an denen es früh billiger war: 251 (43.4%)
+Tage mit positivem Pattern-Match (Case 1/2): 289 (49.9%)
+Durchschnittliche prozentuale Änderung: -0.34%
+
+
+Lade historische 1h-Daten für SHIB/USDT für die letzten 1580 Tage (dies kann einen Moment dauern)...
+
+--- ERGEBNISSE (Langzeittest mit Muster-Check) ---
+Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
+Anzahl analysierter Tage: 1580
+Tage, an denen es früh billiger war: 689 (43.6%)
+Tage mit positivem Pattern-Match (Case 1/2): 773 (48.9%)
+Durchschnittliche prozentuale Änderung: -0.10%
+
+Lade historische 1h-Daten für SUI/USDT für die letzten 1580 Tage (dies kann einen Moment dauern)...
+
+--- ERGEBNISSE (Langzeittest mit Muster-Check) ---
+Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
+Anzahl analysierter Tage: 1226
+Tage, an denen es früh billiger war: 546 (44.5%)
+Tage mit positivem Pattern-Match (Case 1/2): 604 (49.3%)
+Durchschnittliche prozentuale Änderung: -0.05%
+
+
+
+
+Lade historische Daten für DOGE/USDT ab dem 2022-06-30...
+
+--- SIMULATION STARTET (2022-06-30 bis 2026-06-30) ---
+Startkapital: 10,000.00 USDT
+Anzahl Handels-Tage im Test: 1462
+
+[1] Ohne Gebühren:
+Endkapital: 107,379.04 USDT
+Gewinn/Verlust: +97,379.04 USDT (973.79%)
+
+[2] Mit Gebühr (0.1% pro Trade):
+Endkapital: 59,841.93 USDT
+Gewinn/Verlust: +49,841.93 USDT (498.42%)
+Gebühren-Fress-Effekt: 47,537.11 USDT Unterschied
+
+
+Lade historische Daten für XMR/USDT ab dem 2022-06-30...
+
+==========================================
+ STARTE OFFSET-VERGLEICH FÜR: [0, 3, 6, 8, 10]
+==========================================
+
+ERGEBNIS-ÜBERSICHT:
+ Offset (Stunde) Uhrzeit 1 Uhrzeit 2  Endkapital (USDT)  Gewinn/Verlust  ROI (%)
+               0     00:00     12:00            4602.23        -5397.77   -53.98
+               3     03:00     15:00           16283.07         6283.07    62.83
+               6     06:00     18:00           42082.90        32082.90   320.83
+               8     08:00     20:00           25479.50        15479.50   154.80
+              10     10:00     22:00           31124.85        21124.85   211.25
