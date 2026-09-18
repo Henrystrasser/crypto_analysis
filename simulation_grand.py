@@ -42,7 +42,7 @@ def custom_sell_condition(row, portfolio_state):
 
 
 # ==========================================
-# SIMULATIONS-ENGINE
+# SIMULATIONS-ENGINE (Chronologischer Ablauf)
 # ==========================================
 def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
   cash = initial_cash
@@ -54,9 +54,9 @@ def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
   for i in range(len(results_df)):
     row = results_df.iloc[i]
 
-    # Kauf-Zeitpunkt (Intervall 2 / Abend)
-    price_buy = row["Price_2"]
-    time_buy = f"{row['Date']} {row['Time_2']}"
+    # Kauf zum Start-Zeitpunkt
+    price_buy = row["Price_Buy"]
+    time_buy = f"{row['Date_Buy']} {row['Time_Buy']}"
 
     if not position_open and custom_buy_condition(row, {"cash": cash}):
       effective_cash = cash * (1 - fee_rate)
@@ -71,28 +71,26 @@ def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
           "Crypto": crypto,
       })
 
-    # Verkaufs-Zeitpunkt (Intervall 1 des Folgetages / Morgen)
-    if i + 1 < len(results_df):
-      next_row = results_df.iloc[i + 1]
-      price_sell = next_row["Price_1"]
-      time_sell = f"{next_row['Date']} {next_row['Time_1']}"
+    # Verkauf zum Ziel-Zeitpunkt (12h später)
+    price_sell = row["Price_Sell"]
+    time_sell = f"{row['Date_Sell']} {row['Time_Sell']}"
 
-      if position_open and custom_sell_condition(next_row, {"crypto": crypto}):
-        gross_cash = crypto * price_sell
-        cash = gross_cash * (1 - fee_rate)
-        crypto = 0.0
-        position_open = False
-        trade_log.append({
-            "Time": time_sell,
-            "Action": "SELL",
-            "Price": price_sell,
-            "Cash": cash,
-            "Crypto": crypto,
-        })
+    if position_open and custom_sell_condition(row, {"crypto": crypto}):
+      gross_cash = crypto * price_sell
+      cash = gross_cash * (1 - fee_rate)
+      crypto = 0.0
+      position_open = False
+      trade_log.append({
+          "Time": time_sell,
+          "Action": "SELL",
+          "Price": price_sell,
+          "Cash": cash,
+          "Crypto": crypto,
+      })
 
   final_value = cash
   if position_open:
-    final_value = crypto * results_df.iloc[-1]["Price_1"]
+    final_value = crypto * results_df.iloc[-1]["Price_Sell"]
 
   return final_value, pd.DataFrame(trade_log)
 
@@ -101,31 +99,31 @@ def generate_result_df(
     df, offset_hours, interval_hours, start_date_str, end_date_str
 ):
   results = []
-  for date, group in df.groupby("date"):
-    t1 = offset_hours % 24
-    t2 = (offset_hours + interval_hours) % 24
-    hour_data = group[group.index.hour.isin([t1, t2])]
+  dates = df["date"].unique()
 
-    if len(hour_data) >= 2:
-      hour_data = hour_data.sort_index()
+  for d in dates:
+    current_dt = pd.to_datetime(d) + pd.Timedelta(hours=offset_hours)
+    target_sell_dt = current_dt + pd.Timedelta(hours=interval_hours)
+
+    if current_dt in df.index and target_sell_dt in df.index:
+      price_buy = df.loc[current_dt, "close"]
+      price_sell = df.loc[target_sell_dt, "close"]
+
       results.append({
-          "Date": date,
-          "Time_1": hour_data.index[0].strftime("%H:%M"),
-          "Price_1": hour_data.iloc[0]["close"],
-          "Time_2": hour_data.index[1].strftime("%H:%M"),
-          "Price_2": hour_data.iloc[1]["close"],
+          "Date_Buy": current_dt.strftime("%Y-%m-%d"),
+          "Time_Buy": current_dt.strftime("%H:%M"),
+          "Price_Buy": price_buy,
+          "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
+          "Time_Sell": target_sell_dt.strftime("%H:%M"),
+          "Price_Sell": price_sell,
       })
 
   result_df = pd.DataFrame(results)
 
   if start_date_str and not result_df.empty:
-    result_df = result_df[
-        result_df["Date"] >= pd.to_datetime(start_date_str).date()
-    ]
+    result_df = result_df[result_df["Date_Buy"] >= start_date_str]
   if end_date_str and not result_df.empty:
-    result_df = result_df[
-        result_df["Date"] <= pd.to_datetime(end_date_str).date()
-    ]
+    result_df = result_df[result_df["Date_Buy"] <= end_date_str]
 
   return result_df
 
@@ -189,14 +187,14 @@ def main():
       "EOS/USDT",
   ]
 
-  start_date_str = "2022-01-01"
-  end_date_str = "2026-06-30"
+  start_date_str = "2026-01-01"
+  end_date_str = "2026-10-01"
   interval_hours = 12
-  fee_rate = 0.0002  # 0.02% Futures Maker-Gebühr
+  fee_rate = 0.001  # 0.02% Futures Maker-Gebühr
   initial_capital = 10000.0
 
-  # Offsets, die für jeden Coin durchprobiert werden sollen
-  offsets_to_test = [0, 3, 6, 8, 10, 12, 15, 18, 21]
+  # Alle Offsets von 0 bis 23 durchprobieren
+  offsets_to_test = list(range(24))
 
   since_timestamp = (
       int(pd.Timestamp(start_date_str).timestamp() * 1000)
@@ -207,7 +205,7 @@ def main():
 
   print(
       f"\nStarte Optimierung für {len(top_50_symbols)} Coins (teste"
-      f" {len(offsets_to_test)} Offsets pro Coin)...\n"
+      f" {len(offsets_to_test)} Offsets von 0-23 pro Coin)...\n"
   )
 
   for symbol in top_50_symbols:
@@ -225,6 +223,10 @@ def main():
     df.set_index("datetime", inplace=True)
     df = df[~df.index.duplicated(keep="first")]
     df["date"] = df.index.date
+
+    # Tatsächlichen Datenzeitraum ermitteln und ausgeben
+    data_start = df.index.min().strftime("%Y-%m-%d")
+    data_end = df.index.max().strftime("%Y-%m-%d")
 
     best_offset = None
     best_final_val = -1.0
@@ -250,15 +252,19 @@ def main():
         best_roi = (best_profit / initial_capital) * 100
 
     if best_offset is not None:
+      sell_hour = (best_offset + interval_hours) % 24
       portfolio_summary.append({
           "Symbol": symbol,
-          "Bester Offset": f"{best_offset}h",
+          "Bester Offset": f"{best_offset:02d}:00",
+          "Verkauf Uhrzeit": f"{sell_hour:02d}:00",
+          "Daten von": f"{data_start} bis {data_end}",
           "Endkapital": best_final_val,
           "Gewinn/Verlust": best_profit,
           "ROI (%)": best_roi,
       })
       print(
-          f"Bester Offset: {best_offset}h | ROI: {best_roi:+.2f}%"
+          f"Bester Start: {best_offset:02d}:00 | Daten: {data_start} bis"
+          f" {data_end} | ROI: {best_roi:+.2f}%"
       )
     else:
       print("Keine gültigen Daten in den Offsets.")
@@ -269,11 +275,11 @@ def main():
     summary_df = summary_df.sort_values(by="ROI (%)", ascending=False)
     pd.set_option("display.float_format", lambda x: "%.2f" % x)
 
-    print("\n" + "=" * 70)
-    print(" TOP 50 OPTIMIERUNGS-ERGEBNIS (Mit jeweils bestem Offset)")
-    print("=" * 70)
+    print("\n" + "=" * 90)
+    print(" TOP 50 OPTIMIERUNGS-ERGEBNIS (Mit jeweils bestem Offset & Datenzeitraum)")
+    print("=" * 90)
     print(summary_df.to_string(index=False))
-    print("=" * 70)
+    print("=" * 90)
 
 
 if __name__ == "__main__":

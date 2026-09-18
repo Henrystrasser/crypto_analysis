@@ -100,3 +100,21 @@ ERGEBNIS-ÜBERSICHT:
                6     06:00     18:00           42082.90        32082.90   320.83
                8     08:00     20:00           25479.50        15479.50   154.80
               10     10:00     22:00           31124.85        21124.85   211.25
+
+
+
+TOP 50 OPTIMIERUNGS-ERGEBNIS (Mit jeweils bestem Offset)
+======================================================================
+     Symbol Bester Offset  Endkapital  Gewinn/Verlust  ROI (%)
+   FTM/USDT            8h    55873.46        45873.46   458.73
+  DOGE/USDT            6h    52186.35        42186.35   421.86
+   JUP/USDT            8h    50753.68        40753.68   407.54
+  RUNE/USDT           21h    37403.46        27403.46   274.03
+PENDLE/USDT            8h    34163.86        24163.86   241.64
+   SOL/USDT           21h    33088.99        23088.99   230.89
+   BNB/USDT            8h    31001.50        21001.50   210.01
+  LINK/USDT            6h    30915.38        20915.38   209.15
+   FET/USDT           21h    30770.97        20770.97   207.71
+
+
+ZCASH hat in 9 Monaten seit 2026 600% gemacht auf offset = 9! Aber anderer Offset als in vorigen Jahren
