@@ -139,16 +139,16 @@ def run_evening_buy_next_morning_sell(
 
 
 def main():
-    symbol = "JUP/USDT"
-    days = 1000
-    offset_hours = 9
+    symbol = "SHIB/USDT"
+    days =400
+    offset_hours = 16
     interval_hours = 12
     initial_cash = 10000.0
-    fee_rate = 0.0001
+    fee_rate = 0.0004
 
     # "down" = Abstiegstag am Abend kaufen
     # "up"   = Anstiegstag am Abend kaufen
-    BUY_ON = "up"
+    BUY_ON = "down"
 
     exchange = ccxt.binance()
     since_timestamp = exchange.milliseconds() - (days * 24 * 60 * 60 * 1000)

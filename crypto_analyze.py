@@ -158,7 +158,61 @@ def analyze_crypto_intraday_long(
     return result_df
 
 
-temp_symbol = "POL/USDT"
+
+top_50_symbols = [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT",
+      "XRP/USDT",
+      "BNB/USDT",
+      "DOGE/USDT",
+      "ADA/USDT",
+      "AVAX/USDT",
+      "LINK/USDT",
+      "SUI/USDT",
+      "DOT/USDT",
+      "NEAR/USDT",
+      "UNI/USDT",
+      "POL/USDT",
+      "LTC/USDT",
+      "BCH/USDT",
+      "APT/USDT",
+      "ICP/USDT",
+      "RENDER/USDT",
+      "FET/USDT",
+      "ARB/USDT",
+      "INJ/USDT",
+      "OP/USDT",
+      "ATOM/USDT",
+      "SEI/USDT",
+      "TIA/USDT",
+      "PEPE/USDT",
+      "SHIB/USDT",
+      "ETC/USDT",
+      "FIL/USDT",
+      "STX/USDT",
+      "IMX/USDT",
+      "AR/USDT",
+      "FTM/USDT",
+      "GRT/USDT",
+      "RUNE/USDT",
+      "ALGO/USDT",
+      "XLM/USDT",
+      "HBAR/USDT",
+      "VET/USDT",
+      "THETA/USDT",
+      "JUP/USDT",
+      "PENDLE/USDT",
+      "WIF/USDT",
+      "BONK/USDT",
+      "FLOKI/USDT",
+      "KAS/USDT",
+      "AKT/USDT",
+      "TON/USDT",
+      "EOS/USDT",
+  ]
+
+temp_symbol = "JUP/USDT"
 result_df = analyze_crypto_intraday_long(
-    symbol=temp_symbol, days=500, offset_hours=9, interval_hours=12
+    symbol=temp_symbol, days=300, offset_hours=3, interval_hours=12
 )

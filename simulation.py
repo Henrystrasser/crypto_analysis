@@ -146,10 +146,10 @@ def main():
   temp_symbol = "SOL/USDT"
 
   # --- HIER ZEITRAUM ANPASSEN ---
-  start_date_str = "2026-08-01"  # Start des Backtests (YYYY-MM-DD)
-  end_date_str = "2026-10-01"    # Ende des Backtests (YYYY-MM-DD)
+  start_date_str = "2026-09-15"  # Start des Backtests (YYYY-MM-DD)
+  end_date_str = "2026-09-30"    # Ende des Backtests (YYYY-MM-DD)
   interval_hours = 12
-  fee_rate = 0.001              # 0.02% Gebühr (z.B. Futures Maker)
+  fee_rate = 0.0005              # 0.02% Gebühr (z.B. Futures Maker)
   initial_capital = 10000.0
 
   # --- STEUERUNG FÜR OFFSET-VERGLEICH ---
