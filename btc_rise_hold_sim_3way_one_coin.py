@@ -76,6 +76,7 @@ RUN_RANDOM = False
 
 # Hold-Horizonte ab Kauf (Fensterende)
 HOLD_HORIZONS: Dict[str, int] = {
+    "3h": 180,
     "6h": 360,
     "12h": 720,
     "24h": 1440,
@@ -818,19 +819,12 @@ def print_coin_result(
     else:
         trigger = f"Zufalls-Käufe (unabhängig von {ref_symbol})"
     print()
-    print("=" * 120)
+    print("-" * 100)
     print(
-        f"COIN {coin} | {direction} | {trigger} | "
-        f"Hold {', '.join(HORIZON_NAMES)} | {len(trades)} Trades"
+        f"{direction} | {coin} | {trigger} | "
+        f"{len(trades)} Events | Holds {', '.join(HORIZON_NAMES)}"
     )
-    if bh is not None:
-        print(
-            f"Buy&Hold über Zeitraum: {bh['bh_buy_time']} → {bh['bh_sell_time']} | "
-            f"ROI {fmt_pct(bh['buy_hold_roi_pct'])}"
-        )
-    else:
-        print("Buy&Hold über Zeitraum: n/a")
-    print("=" * 120)
+    print("-" * 100)
 
     if SHOW_TRADES and trades:
         header = (
@@ -858,24 +852,118 @@ def print_coin_result(
         print(foot_avg)
         print(foot_cmp)
     else:
+        # denser one-line-per-horizon dump (Buy&Hold nur in End-Scorecard)
         for h in HORIZON_NAMES:
             st = by_h[h]
             n_used = st.get("n_used", st["n_trades"])
             n_raw = st.get("n_raw", st["n_trades"])
-            n_txt = f"n={n_used}"
+            n_txt = f"{n_used}"
             if n_raw is not None and n_raw != n_used:
-                n_txt += f" (raw {n_raw})"
+                n_txt += f"({n_raw})"
             print(
-                f"  {h:>4}: {n_txt}  "
+                f"  {h:>4}: n={n_txt:<10} "
                 f"%pos={fmt_pos(st)}  Ø={fmt_pct(st['avg_roi_pct'])}  "
-                f"Compound={fmt_pct(st['compound_roi_pct'])}"
+                f"Cmp={fmt_pct(st['compound_roi_pct'])}"
             )
-
-    if bh is not None:
-        print(f"Vergleich Buy&Hold (einfach halten): {fmt_pct(bh['buy_hold_roi_pct'])}")
 
     print(flush=True)
     sys.stdout.flush()
+
+
+
+def mean_avg_roi_across_horizons(row: dict) -> Optional[float]:
+    """Simple mean of per-horizon avg_roi_* values (None/NaN skipped)."""
+    vals: List[float] = []
+    for h in HORIZON_NAMES:
+        v = row.get(f"avg_roi_{h}")
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            continue
+        vals.append(float(v))
+    if not vals:
+        return None
+    return float(sum(vals) / len(vals))
+
+
+def _n_txt(row: dict, h: str) -> str:
+    n_u = row.get(f"n_used_{h}", row.get(f"n_{h}"))
+    n_r = row.get(f"n_raw_{h}", row.get(f"n_{h}"))
+    if n_u is None:
+        return "n/a"
+    if n_r is not None and n_r != n_u:
+        return f"{n_u}({n_r})"
+    return str(n_u)
+
+
+def _pct_pos_txt(row: dict, h: str) -> str:
+    p = row.get(f"pct_pos_{h}")
+    if p is None:
+        return "n/a"
+    return f"{p:.0f}%"
+
+
+def print_one_coin_scorecard(
+    summary_rows: List[dict],
+    *,
+    ref_symbol: str,
+    coin: str,
+    period_start: Optional[str] = None,
+    period_end: Optional[str] = None,
+    run_random: bool = False,
+) -> None:
+    """Single combined end table: rows=holds, columns=UP/DOWN/(RANDOM)."""
+    by_dir = {s["direction"]: s for s in summary_rows}
+    dirs = ["UP", "DOWN"] + (["RANDOM"] if run_random and "RANDOM" in by_dir else [])
+
+    print("\n" + "=" * 100)
+    header = f"ZUSAMMENFASSUNG | Ref={ref_symbol} → Ziel={coin}"
+    if period_start and period_end:
+        header += f" | Zeitraum {period_start} → {period_end}"
+    print(header)
+    print("=" * 100)
+
+    # Wide table: Hold | UP n/%pos/Ø/Cmp | DOWN … | RANDOM …
+    hdr = f"{'Hold':<6}"
+    for d in dirs:
+        hdr += f" | {d + ' n':>8} {d + ' %pos':>8} {d + ' Ø':>9} {d + ' Cmp':>10}"
+    print(hdr)
+    print("-" * len(hdr))
+
+    for h in HORIZON_NAMES:
+        line = f"{h:<6}"
+        for d in dirs:
+            s = by_dir.get(d)
+            if s is None:
+                line += f" | {'n/a':>8} {'n/a':>8} {'n/a':>9} {'n/a':>10}"
+            else:
+                line += (
+                    f" | {_n_txt(s, h):>8} {_pct_pos_txt(s, h):>8} "
+                    f"{fmt_pct(s.get(f'avg_roi_{h}')):>9} "
+                    f"{fmt_pct(s.get(f'compound_roi_{h}')):>10}"
+                )
+        print(line)
+
+    # Mean Ø ROI one-liner for UP/DOWN
+    mean_parts = []
+    for d in ("UP", "DOWN"):
+        s = by_dir.get(d)
+        m = mean_avg_roi_across_horizons(s) if s else None
+        mean_parts.append(f"{d}={fmt_pct(m)}")
+    print()
+    print("Mean Ø ROI über alle Holds: " + "  ".join(mean_parts))
+
+    # Buy&Hold once
+    bh_row = by_dir.get("UP") or by_dir.get("DOWN") or next(iter(by_dir.values()), None)
+    bh_roi = None if bh_row is None else bh_row.get("buy_hold_roi_pct")
+    bh_buy = None if bh_row is None else bh_row.get("bh_buy_time")
+    bh_sell = None if bh_row is None else bh_row.get("bh_sell_time")
+    if bh_roi is not None and bh_buy and bh_sell:
+        print(f"Buy&Hold: {bh_buy} → {bh_sell} | ROI {fmt_pct(bh_roi)}")
+    else:
+        print(f"Buy&Hold: {fmt_pct(bh_roi)}")
+    print(
+        "Mean Ø ROI = Mittelwert der Ø-ROI-Werte über die Hold-Horizonte "
+        "(jeder Horizont = eigene Strategie)."
+    )
 
 
 def resolve_target_pair(target_raw: str, ref_pair: str) -> str:
@@ -1080,85 +1168,22 @@ def main(argv: Optional[List[str]] = None) -> None:
         del df
 
     if summary_rows:
-        # Ranking je Richtung × Horizont nach Compound (nur Konsole)
-        for direction in (("UP", "DOWN", "RANDOM") if run_random else ("UP", "DOWN")):
-            subset = [s for s in summary_rows if s["direction"] == direction]
-            if not subset:
-                continue
-            for h in HORIZON_NAMES:
-                print("\n" + "=" * 100)
-                print(
-                    f"ÜBERSICHT {direction} | Hold={h} "
-                    f"(sortiert nach Compound-ROI)"
-                )
-                print("=" * 100)
-                ranked = sorted(
-                    subset,
-                    key=lambda s: (
-                        s[f"compound_roi_{h}"]
-                        if s[f"compound_roi_{h}"] is not None
-                        else float("-inf")
-                    ),
-                    reverse=True,
-                )
-                hdr = (
-                    f"{'Coin':<14} {'Dir':<6} {'n':>10} {'%pos':>6} "
-                    f"{'Ø ROI':>9} {'Compound':>10} {'Buy&Hold':>10} "
-                    f"{'vs BH':>10}"
-                )
-                if run_random:
-                    hdr += f" {'vs Rand':>10}"
-                print(hdr)
-                print("-" * len(hdr))
-                for s in ranked:
-                    pos = (
-                        f"{s[f'pct_pos_{h}']:.0f}%"
-                        if s[f"pct_pos_{h}"] is not None
-                        else "n/a"
-                    )
-                    n_u = s.get(f"n_used_{h}", s[f"n_{h}"])
-                    n_r = s.get(f"n_raw_{h}", s[f"n_{h}"])
-                    if n_r is not None and n_r != n_u:
-                        n_txt = f"{n_u}({n_r})"
-                    else:
-                        n_txt = str(n_u)
-                    line = (
-                        f"{s['coin']:<14} {s['direction']:<6} {n_txt:>10} "
-                        f"{pos:>6} "
-                        f"{fmt_pct(s[f'avg_roi_{h}']):>9} "
-                        f"{fmt_pct(s[f'compound_roi_{h}']):>10} "
-                        f"{fmt_pct(s.get('buy_hold_roi_pct')):>10} "
-                        f"{fmt_pct(s.get(f'vs_bh_{h}')):>10}"
-                    )
-                    if run_random:
-                        line += f" {fmt_pct(s.get(f'vs_rand_{h}')):>10}"
-                    print(line)
+        print_one_coin_scorecard(
+            summary_rows,
+            ref_symbol=ref_base,
+            coin=target_pair,
+            period_start=start.strftime("%Y-%m-%d"),
+            period_end=end.strftime("%Y-%m-%d"),
+            run_random=run_random,
+        )
 
     footer = (
-        "\nFertig. Jeder Hold-Horizont = eigene Bot-Strategie "
-        f"({', '.join(HORIZON_NAMES)}) — kein globales Portfolio über alle Holds.\n"
-        "Pro Event: Kauf am Fensterende, Verkauf nach dem jeweiligen Hold.\n"
-        "n = n_used nach Non-Overlap (Cooldown = Hold-Länge); "
-        "n_raw nur in Klammern wenn abweichend.\n"
-        "Compound je Horizont = Produkt (1+roi) − 1 über die gefilterten Events.\n"
-        "UP = Kauf nach Ref-Anstieg; DOWN = nach Ref-Abfall"
-    )
-    if run_random:
-        footer += "; RANDOM = Zufallszeitpunkte, pro Horizont n_used = max(UP,DOWN).\n"
-    else:
-        footer += ".\n"
-    footer += (
-        f"Referenz war {ref_base} ({ref_pair}).\n"
-        "Buy&Hold = einmal kaufen am Periodenanfang, halten bis Periodenende.\n"
-        "vs BH = Compound − Buy&Hold (Experiment-Metrik)"
-    )
-    if run_random:
-        footer += "; vs Rand = Compound − RANDOM (positiv = besser als Zufall).\n"
-    else:
-        footer += ".\n"
-    footer += (
-        "Nur Konsolen-Ausgabe — keine CSV.\n"
-        "Keine Handelsempfehlung — reine Simulation.\n"
+        "\nFertig. Jeder Hold = eigene Strategie "
+        f"({', '.join(HORIZON_NAMES)}); kein globales Portfolio.\n"
+        "n = n_used nach Non-Overlap; n_raw in Klammern wenn abweichend.\n"
+        "Compound = Produkt (1+roi)−1; Mean Ø ROI = Mittelwert der Ø-ROIs über Holds.\n"
+        f"Ref={ref_base} ({ref_pair}). Buy&Hold = einmal halten über den Zeitraum.\n"
+        "Nur Konsole — keine CSV. Keine Handelsempfehlung.\n"
     )
     print(footer, flush=True)
 

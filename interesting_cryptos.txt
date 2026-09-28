@@ -301,6 +301,17 @@ HBARUSDT       UP      270 1337    48%    +0.87%   +338.00%    +39.05%   +298.96
 XLM down 12h
 CRVUSDT        DOWN    654 1399    50%    +0.44%   +660.17%    +35.46%   +624.71%   +732.42% (hat sich nicht bestätigt)
 
+TRUMP korreliert mit ETC (Ref)?
+
+NEXO (Ref) hat einige starke UP Kandidaten
+PENGUUSDT      UP       259(644)    52%    +0.95%   +538.41%     +3.02%   +535.40%
+VIRTUALUSDT    UP       233(644)    52%    +0.95%   +438.81%    +55.62%   +383.19%
+PYTHUSDT       UP       259(644)    52%    +0.89%   +396.05%    -61.51%   +457.56%
+RAYUSDT        UP       259(644)    53%    +0.71%   +336.03%    -20.03%   +356.05%
+ZROUSDT        UP       259(644)    57%    +0.75%   +278.14%    -41.68%   +319.82%
+ENAUSDT        UP       259(644)    47%    +0.67%   +223.67%    -36.69%   +260.36%
+RENDERUSDT     UP       259(644)    49%    +0.57%   +195.51%    -49.37%   +244.88%
+
 Order Flow:
 COIN XLMUSDT | BOTH | ETF net flow |≥| 500M USD @ 20:00 UTC | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 34 Trades
 Buy&Hold über Zeitraum: 2025-05-24 13:05:00 UTC → 2026-09-26 13:00:00 UTC | ROI -24.43%

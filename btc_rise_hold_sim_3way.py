@@ -57,7 +57,7 @@ import requests
 # --- Strategie / Event ---
 # Referenz-Coin für UP/DOWN-Events — hier in VS Code ändern; CLI --ref ist ein optionaler Override.
 # Base z.B. "BTC"/"ETH" oder Pair "ETHUSDT"
-REF_SYMBOL = "BNB"
+REF_SYMBOL = "SHIB"
 BTC_RISE_WINDOW_MIN = 30
 BTC_RISE_THRESHOLD_PCT = 1.0
 USE_THRESHOLD_CROSSING = True
@@ -69,6 +69,7 @@ RUN_RANDOM = False
 
 # Hold-Horizonte ab Kauf (Fensterende)
 HOLD_HORIZONS: Dict[str, int] = {
+    "3h": 180,
     "6h": 360,
     "12h": 720,
     "24h": 1440,
@@ -89,7 +90,7 @@ HOLD_HORIZONS: Dict[str, int] = {
 #   Date-only: FROM = 00:00:00 UTC, TO = inklusiv bis 23:59:59.999 UTC.
 # Wenn FROM_DATE=None: LOOKBACK_DAYS rückwärts ab jetzt.
 # FROM_DATE und LOOKBACK_DAYS nicht gleichzeitig "aktiv" (FROM hat Vorrang).
-FROM_DATE: Optional[str] = "2026-03-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
+FROM_DATE: Optional[str] = "2025-03-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
 TO_DATE: Optional[str] = "2026-09-28"    # z.B. "2026-09-02"
 LOOKBACK_DAYS = 400
 KLINE_INTERVAL = "30m"
@@ -860,6 +861,62 @@ def print_coin_result(
     sys.stdout.flush()
 
 
+
+def mean_compound_across_horizons(row: dict) -> Optional[float]:
+    """Simple mean of per-horizon compound_roi_* values (None/NaN skipped)."""
+    vals: List[float] = []
+    for h in HORIZON_NAMES:
+        v = row.get(f"compound_roi_{h}")
+        if v is None or (isinstance(v, float) and np.isnan(v)):
+            continue
+        vals.append(float(v))
+    if not vals:
+        return None
+    return float(sum(vals) / len(vals))
+
+
+def print_up_down_avg_table(summary_rows: List[dict]) -> None:
+    """Print one coin table with mean Compound for UP and DOWN holds."""
+    by_coin: Dict[str, Dict[str, dict]] = {}
+    for row in summary_rows:
+        direction = row.get("direction")
+        if direction in ("UP", "DOWN"):
+            by_coin.setdefault(row["coin"], {})[direction] = row
+
+    ranked: List[Tuple[float, str, Optional[float]]] = []
+    for coin, rows_by_direction in by_coin.items():
+        up_avg = (
+            mean_compound_across_horizons(rows_by_direction["UP"])
+            if "UP" in rows_by_direction
+            else None
+        )
+        down_avg = (
+            mean_compound_across_horizons(rows_by_direction["DOWN"])
+            if "DOWN" in rows_by_direction
+            else None
+        )
+        if up_avg is None and down_avg is None:
+            continue
+        ranked.append((up_avg if up_avg is not None else float("-inf"), coin, down_avg))
+
+    if not ranked:
+        return
+    ranked.sort(key=lambda item: item[0], reverse=True)
+
+    print("\n" + "=" * 60)
+    print("ÜBERSICHT UP/DOWN | Ø Compound über alle Holds (sortiert nach UpAvg)")
+    print("=" * 60)
+    hdr = f"{'Coin':<14} {'UpAvg':>11} {'DownAvg':>11}"
+    print(hdr)
+    print("-" * len(hdr))
+    for up_sort, coin, down_avg in ranked:
+        up_avg = None if up_sort == float("-inf") else up_sort
+        print(f"{coin:<14} {fmt_pct(up_avg):>11} {fmt_pct(down_avg):>11}")
+    print(
+        "UpAvg/DownAvg = Mittelwert der Compound-Werte über alle UP- bzw. DOWN-Holds."
+    )
+
+
 def resolve_universe(
     exclude_base: str = "BTC",
     exclude_pair: Optional[str] = None,
@@ -1143,6 +1200,9 @@ def main(argv: Optional[List[str]] = None) -> None:
                     if run_random:
                         line += f" {fmt_pct(s.get(f'vs_rand_{h}')):>10}"
                     print(line)
+
+        # Zusätzlich: eine gemeinsame UP/DOWN-Übersicht über alle Holds
+        print_up_down_avg_table(summary_rows)
 
     footer = (
         "\nFertig. Jeder Hold-Horizont = eigene Bot-Strategie "
