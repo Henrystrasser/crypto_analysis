@@ -49,40 +49,41 @@ def analyze_crypto_intraday_long(
     )
     df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
     df.set_index("datetime", inplace=True)
-
     df = df[~df.index.duplicated(keep="first")]
     df["date"] = df.index.date
 
     results = []
-    target_hour_1 = offset_hours % 24
-    target_hour_2 = (offset_hours + interval_hours) % 24
+    start_hour = offset_hours % 24
+    end_hour = (offset_hours + interval_hours) % 24
 
-    for date, group in df.groupby("date"):
-        hour_data = group[group.index.hour.isin([target_hour_1, target_hour_2])]
+    # Ein Fenster pro Kalendertag: Start = Tag + offset, Ende = Start + interval
+    # (Ende darf auf den Folgetag fallen — genau der Unterschied 02:00 vs 14:00)
+    unique_dates = sorted(pd.unique(df["date"]))
+    for date in unique_dates:
+        t1 = pd.Timestamp(date) + pd.Timedelta(hours=start_hour)
+        t2 = t1 + pd.Timedelta(hours=interval_hours)
 
-        if len(hour_data) >= 2:
-            hour_data = hour_data.sort_index()
+        if t1 not in df.index or t2 not in df.index:
+            continue
 
-            price_t1 = hour_data.iloc[0]["close"]
-            time_t1 = hour_data.index[0]
+        price_t1 = df.loc[t1, "close"]
+        price_t2 = df.loc[t2, "close"]
+        diff = price_t2 - price_t1
+        percent_diff = (diff / price_t1) * 100
+        cheaper_at_start = price_t1 < price_t2
 
-            price_t2 = hour_data.iloc[1]["close"]
-            time_t2 = hour_data.index[1]
-
-            diff = price_t2 - price_t1
-            percent_diff = (diff / price_t1) * 100
-            cheaper_in_morning = price_t1 < price_t2
-
-            results.append({
+        results.append(
+            {
                 "Date": date,
-                "Time_1": time_t1.strftime("%H:%M"),
+                "Time_1": t1.strftime("%Y-%m-%d %H:%M"),
                 "Price_1": price_t1,
-                "Time_2": time_t2.strftime("%H:%M"),
+                "Time_2": t2.strftime("%Y-%m-%d %H:%M"),
                 "Price_2": price_t2,
-                "Price_Diff": price_t2 - price_t1,
+                "Price_Diff": diff,
                 "Diff (%)": round(percent_diff, 2),
-                "Früh billiger?": cheaper_in_morning,
-            })
+                "Start billiger?": cheaper_at_start,
+            }
+        )
 
     result_df = pd.DataFrame(results)
 
@@ -90,9 +91,8 @@ def analyze_crypto_intraday_long(
         print("Nicht genügend Daten für diesen Offset gefunden.")
         return
 
-    # Vortag: Abendpreis und ob der Vortag gestiegen/gefallen ist
     result_df["Prev_Price_2"] = result_df["Price_2"].shift(1)
-    result_df["Prev_Rose"] = result_df["Früh billiger?"].shift(1)
+    result_df["Prev_Rose"] = result_df["Start billiger?"].shift(1)
 
     def check_condition(row):
         if pd.isna(row["Prev_Price_2"]) or pd.isna(row["Prev_Rose"]):
@@ -102,21 +102,17 @@ def analyze_crypto_intraday_long(
         p2_yest = row["Prev_Price_2"]
         yesterday_rose = bool(row["Prev_Rose"])
 
-        # Gestern Anstieg → heutiger Morgen niedriger als gestriger Abend
         if yesterday_rose and p1_today < p2_yest:
             return True
-
-        # Gestern Abstieg → heutiger Morgen höher als gestriger Abend
         if (not yesterday_rose) and p1_today > p2_yest:
             return True
-
         return False
 
     result_df["Pattern_Match"] = result_df.apply(check_condition, axis=1)
     result_df = result_df.drop(columns=["Prev_Price_2", "Prev_Rose"])
 
     total_days = len(result_df)
-    cheaper_count = result_df["Früh billiger?"].sum()
+    cheaper_count = result_df["Start billiger?"].sum()
     win_rate = (cheaper_count / total_days) * 100
 
     match_count = result_df["Pattern_Match"].sum()
@@ -127,92 +123,40 @@ def analyze_crypto_intraday_long(
 
     print("\n--- ERGEBNISSE (Langzeittest mit Muster-Check & Summen) ---")
     print(
-        f"Getestetes Intervall: Start um Stunde {target_hour_1}:00, "
-        f"Ende um Stunde {target_hour_2}:00 (Offset: {offset_hours}h)"
+        f"Getestetes Intervall: Start {start_hour:02d}:00, "
+        f"Ende {end_hour:02d}:00 "
+        f"(Offset {offset_hours}h, Dauer {interval_hours}h"
+        f"{', über Mitternacht' if end_hour < start_hour else ''})"
     )
-    print(f"Anzahl analysierter Tage: {total_days}")
+    print(f"Anzahl analysierter Fenster: {total_days}")
     print(
-        f"Tage, an denen es früh billiger war: {cheaper_count} ({win_rate:.1f}%)"
-    )
-    print(
-        f"Tage mit positivem Pattern-Match: {match_count}"
-        f" ({match_rate:.1f}%)"
+        f"Fenster, in denen der Start günstiger war: {cheaper_count} ({win_rate:.1f}%)"
     )
     print(
-        "Pattern: gestern Anstieg → heute Morgen < gestern Abend; "
-        "gestern Abstieg → heute Morgen > gestern Abend"
+        f"Tage mit positivem Pattern-Match: {match_count} ({match_rate:.1f}%)"
     )
     print(
-        f"Summe der absoluten Preisunterschiede (Price_2 - Price_1):"
-        f" {total_price_diff_sum:,.2f} USD"
+        "Pattern: gestern Anstieg → heutiger Start < gestriges Ende; "
+        "gestern Abstieg → heutiger Start > gestriges Ende"
     )
-    print(f"Kumulierte prozentuale Tagesschwankungen: {total_percent_sum:,.2f}%")
     print(
-        f"Durchschnittliche prozentuale Änderung pro Tag: "
+        f"Summe der Preisunterschiede (Price_2 - Price_1): "
+        f"{total_price_diff_sum:,.2f} USD"
+    )
+    print(f"Kumulierte prozentuale Änderungen: {total_percent_sum:,.2f}%")
+    print(
+        f"Durchschnittliche prozentuale Änderung pro Fenster: "
         f"{result_df['Diff (%)'].mean():.2f}%"
     )
 
-    print("\nAlle Tage im Detail:")
+    print("\nAlle Fenster im Detail:")
     #print(result_df.to_string(index=False))
 
     return result_df
 
 
-
-top_50_symbols = [
-      "BTC/USDT",
-      "ETH/USDT",
-      "SOL/USDT",
-      "XRP/USDT",
-      "BNB/USDT",
-      "DOGE/USDT",
-      "ADA/USDT",
-      "AVAX/USDT",
-      "LINK/USDT",
-      "SUI/USDT",
-      "DOT/USDT",
-      "NEAR/USDT",
-      "UNI/USDT",
-      "POL/USDT",
-      "LTC/USDT",
-      "BCH/USDT",
-      "APT/USDT",
-      "ICP/USDT",
-      "RENDER/USDT",
-      "FET/USDT",
-      "ARB/USDT",
-      "INJ/USDT",
-      "OP/USDT",
-      "ATOM/USDT",
-      "SEI/USDT",
-      "TIA/USDT",
-      "PEPE/USDT",
-      "SHIB/USDT",
-      "ETC/USDT",
-      "FIL/USDT",
-      "STX/USDT",
-      "IMX/USDT",
-      "AR/USDT",
-      "FTM/USDT",
-      "GRT/USDT",
-      "RUNE/USDT",
-      "ALGO/USDT",
-      "XLM/USDT",
-      "HBAR/USDT",
-      "VET/USDT",
-      "THETA/USDT",
-      "JUP/USDT",
-      "PENDLE/USDT",
-      "WIF/USDT",
-      "BONK/USDT",
-      "FLOKI/USDT",
-      "KAS/USDT",
-      "AKT/USDT",
-      "TON/USDT",
-      "EOS/USDT",
-  ]
-
-temp_symbol = "JUP/USDT"
-result_df = analyze_crypto_intraday_long(
-    symbol=temp_symbol, days=300, offset_hours=3, interval_hours=12
-)
+if __name__ == "__main__":
+    temp_symbol = "TNSR/USDT"
+    result_df = analyze_crypto_intraday_long(
+        symbol=temp_symbol, days=100, offset_hours=2, interval_hours=12
+    )

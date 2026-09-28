@@ -10,228 +10,431 @@ def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
     while True:
         try:
             ohlcv = exchange.fetch_ohlcv(
-                symbol,
-                timeframe=timeframe,
-                since=current_since,
-                limit=limit,
+                symbol, timeframe=timeframe, since=current_since, limit=limit
             )
             if not ohlcv:
                 break
 
             all_ohlcv.extend(ohlcv)
             next_since = ohlcv[-1][0] + 1
+
             if next_since <= current_since:
                 break
-
             current_since = next_since
+
             if len(ohlcv) < limit:
                 break
-        except Exception as e:
-            print(f"Fehler beim Laden: {e}")
+        except Exception:
             break
 
     return all_ohlcv
 
 
-def generate_result_df(df, offset_hours, interval_hours, start_ts, end_ts):
-    results = []
-    dates = sorted(set(df.loc[start_ts:end_ts].index.date)) if not df.empty else []
+def custom_buy_condition(row, portfolio_state):
+    return True
 
-    for d in dates:
-        buy_dt = pd.Timestamp(d, tz="UTC") + pd.Timedelta(hours=offset_hours)
-        sell_dt = buy_dt + pd.Timedelta(hours=interval_hours)
 
-        if buy_dt < start_ts or buy_dt >= end_ts:
-            continue
-        if buy_dt not in df.index or sell_dt not in df.index:
-            continue
-
-        results.append({
-            "Date_Buy": buy_dt.strftime("%Y-%m-%d"),
-            "Time_Buy": buy_dt.strftime("%H:%M"),
-            "Price_Buy": float(df.loc[buy_dt, "close"]),
-            "Date_Sell": sell_dt.strftime("%Y-%m-%d"),
-            "Time_Sell": sell_dt.strftime("%H:%M"),
-            "Price_Sell": float(df.loc[sell_dt, "close"]),
-        })
-
-    return pd.DataFrame(results)
+def custom_sell_condition(row, portfolio_state):
+    return True
 
 
 def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
     cash = initial_cash
     crypto = 0.0
     position_open = False
+    trade_log = []
 
-    for _, row in results_df.iterrows():
-        if not position_open:
-            price_buy = row["Price_Buy"]
-            crypto = (cash * (1.0 - fee_rate)) / price_buy
+    for i in range(len(results_df)):
+        row = results_df.iloc[i]
+
+        price_buy = row["Price_Buy"]
+        time_buy = f"{row['Date_Buy']} {row['Time_Buy']}"
+
+        if not position_open and custom_buy_condition(row, {"cash": cash}):
+            effective_cash = cash * (1 - fee_rate)
+            crypto = effective_cash / price_buy
             cash = 0.0
             position_open = True
+            trade_log.append(
+                {
+                    "Time": time_buy,
+                    "Action": "BUY",
+                    "Price": price_buy,
+                    "Cash": cash,
+                    "Crypto": crypto,
+                }
+            )
 
-        if position_open:
-            price_sell = row["Price_Sell"]
-            cash = (crypto * price_sell) * (1.0 - fee_rate)
+        price_sell = row["Price_Sell"]
+        time_sell = f"{row['Date_Sell']} {row['Time_Sell']}"
+
+        if position_open and custom_sell_condition(row, {"crypto": crypto}):
+            gross_cash = crypto * price_sell
+            cash = gross_cash * (1 - fee_rate)
             crypto = 0.0
             position_open = False
+            trade_log.append(
+                {
+                    "Time": time_sell,
+                    "Action": "SELL",
+                    "Price": price_sell,
+                    "Cash": cash,
+                    "Crypto": crypto,
+                }
+            )
 
-    if position_open and not results_df.empty:
-        cash = crypto * results_df.iloc[-1]["Price_Sell"]
+    final_value = cash
+    if position_open:
+        final_value = crypto * results_df.iloc[-1]["Price_Sell"]
 
-    return cash
+    return final_value, pd.DataFrame(trade_log)
 
 
-def find_best_offset(df, start_ts, end_ts, interval_hours, fee_rate, initial_cash):
-    rows = []
+def compute_buy_and_hold(df, start_date_str, end_date_str, fee_rate, initial_cash):
+    """Kauf zum ersten Close im Fenster, Verkauf zum letzten Close."""
+    window = df.copy()
+    if start_date_str:
+        window = window[window.index >= pd.Timestamp(start_date_str)]
+    if end_date_str:
+        window = window[window.index <= pd.Timestamp(end_date_str) + pd.Timedelta(days=1)]
 
-    for offset in range(24):
-        result_df = generate_result_df(df, offset, interval_hours, start_ts, end_ts)
+    if window.empty:
+        return None
+
+    first_price = float(window.iloc[0]["close"])
+    last_price = float(window.iloc[-1]["close"])
+    first_time = window.index[0]
+    last_time = window.index[-1]
+
+    crypto = (initial_cash * (1 - fee_rate)) / first_price
+    final_value = crypto * last_price * (1 - fee_rate)
+    profit = final_value - initial_cash
+    roi = (profit / initial_cash) * 100
+    raw_move = ((last_price / first_price) - 1.0) * 100
+
+    return {
+        "Hold Start": first_time.strftime("%Y-%m-%d %H:%M"),
+        "Hold Ende": last_time.strftime("%Y-%m-%d %H:%M"),
+        "Hold Startpreis": first_price,
+        "Hold Endpreis": last_price,
+        "Hold Endkapital": final_value,
+        "Hold Gewinn/Verlust": profit,
+        "Hold ROI (%)": roi,
+        "Hold Kursbewegung (%)": raw_move,
+    }
+
+
+def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_date_str):
+    results = []
+    dates = df["date"].unique()
+
+    for d in dates:
+        current_dt = pd.to_datetime(d) + pd.Timedelta(hours=offset_hours)
+        target_sell_dt = current_dt + pd.Timedelta(hours=interval_hours)
+
+        if current_dt in df.index and target_sell_dt in df.index:
+            price_buy = df.loc[current_dt, "close"]
+            price_sell = df.loc[target_sell_dt, "close"]
+
+            results.append(
+                {
+                    "Date_Buy": current_dt.strftime("%Y-%m-%d"),
+                    "Time_Buy": current_dt.strftime("%H:%M"),
+                    "Price_Buy": price_buy,
+                    "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
+                    "Time_Sell": target_sell_dt.strftime("%H:%M"),
+                    "Price_Sell": price_sell,
+                }
+            )
+
+    result_df = pd.DataFrame(results)
+
+    if start_date_str and not result_df.empty:
+        result_df = result_df[result_df["Date_Buy"] >= start_date_str]
+    if end_date_str and not result_df.empty:
+        result_df = result_df[result_df["Date_Buy"] <= end_date_str]
+
+    return result_df
+
+
+def find_best_offset(
+    df, interval_hours, start_date_str, end_date_str, offsets_to_test, fee_rate, initial_cash
+):
+    """
+    Besten Offset im Zeitfenster finden.
+
+    Score eines Offsets = Summe der ROIs seiner 4 Nachbarn
+    (2 Stunden vorher + 2 Stunden nachher, zyklisch über 0–23).
+    Gewählt wird der Offset mit der höchsten Nachbar-Summe, nicht der
+    einzelne Peak — das dämpft stark springende Offsets.
+    """
+    roi_by_offset = {}
+    val_by_offset = {}
+
+    for offset in offsets_to_test:
+        result_df = generate_result_df(
+            df, offset, interval_hours, start_date_str, end_date_str
+        )
         if result_df.empty:
             continue
 
-        final_val = run_simulation(
+        final_val, _ = run_simulation(
             result_df, fee_rate=fee_rate, initial_cash=initial_cash
         )
-        roi = (final_val / initial_cash - 1.0) * 100.0
-        rows.append({
-            "offset": offset,
-            "trades": len(result_df),
-            "final": final_val,
-            "roi": roi,
-        })
+        val_by_offset[offset] = final_val
+        roi_by_offset[offset] = (final_val / initial_cash - 1.0) * 100
 
-    if not rows:
+    if not roi_by_offset:
+        return None, -1.0
+
+    neighbor_deltas = (-2, -1, 1, 2)
+    best_offset = None
+    best_neighbor_sum = None
+
+    for offset in roi_by_offset:
+        neighbor_rois = []
+        for d in neighbor_deltas:
+            nb = (offset + d) % 24
+            if nb not in roi_by_offset:
+                neighbor_rois = None
+                break
+            neighbor_rois.append(roi_by_offset[nb])
+        if neighbor_rois is None:
+            continue
+        neighbor_sum = sum(neighbor_rois)
+        if best_neighbor_sum is None or neighbor_sum > best_neighbor_sum:
+            best_neighbor_sum = neighbor_sum
+            best_offset = offset
+
+    # Fallback: einzelner Peak, falls Nachbarn nicht vollständig
+    if best_offset is None:
+        best_offset = max(val_by_offset, key=val_by_offset.get)
+
+    return best_offset, val_by_offset[best_offset]
+
+
+def generate_single_day_row(df, day, offset_hours, interval_hours):
+    current_dt = pd.to_datetime(day) + pd.Timedelta(hours=offset_hours)
+    target_sell_dt = current_dt + pd.Timedelta(hours=interval_hours)
+
+    if current_dt not in df.index or target_sell_dt not in df.index:
         return None
 
-    return max(rows, key=lambda x: x["roi"])
+    return {
+        "Date_Buy": current_dt.strftime("%Y-%m-%d"),
+        "Time_Buy": current_dt.strftime("%H:%M"),
+        "Price_Buy": df.loc[current_dt, "close"],
+        "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
+        "Time_Sell": target_sell_dt.strftime("%H:%M"),
+        "Price_Sell": df.loc[target_sell_dt, "close"],
+        "Offset": offset_hours,
+    }
+
+
+def run_daily_walk_forward(
+    df,
+    start_date_str,
+    end_date_str,
+    lookback_days,
+    interval_hours,
+    offsets_to_test,
+    fee_rate,
+    initial_capital,
+):
+    """
+    Für jeden Handelstag:
+      1) besten Offset (4-Nachbar-Regel) auf den letzten lookback_days Tagen
+      2) an diesem Tag mit genau diesem Offset handeln (Long interval_hours)
+    Kapital wird über die Tage fortgeschrieben.
+    """
+    start = pd.Timestamp(start_date_str).normalize()
+    end = pd.Timestamp(end_date_str).normalize()
+
+    trade_days = sorted(pd.to_datetime(pd.unique(df["date"])))
+    trade_days = [d.normalize() for d in trade_days if start <= d.normalize() <= end]
+
+    rows = []
+    offsets_used = []
+    day_logs = []
+
+    for day in trade_days:
+        prev_start = (day - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        prev_end = (day - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+        best_offset, _ = find_best_offset(
+            df,
+            interval_hours,
+            prev_start,
+            prev_end,
+            offsets_to_test,
+            fee_rate,
+            initial_capital,
+        )
+
+        if best_offset is None:
+            day_logs.append(
+                {
+                    "Tag": day.strftime("%Y-%m-%d"),
+                    "Offset": None,
+                    "Hinweis": "kein Offset aus Lookback",
+                }
+            )
+            continue
+
+        row = generate_single_day_row(df, day, best_offset, interval_hours)
+        if row is None:
+            day_logs.append(
+                {
+                    "Tag": day.strftime("%Y-%m-%d"),
+                    "Offset": best_offset,
+                    "Hinweis": "keine Kerzen für Buy/Sell",
+                }
+            )
+            continue
+
+        rows.append(row)
+        offsets_used.append(int(best_offset))
+        day_logs.append(
+            {
+                "Tag": day.strftime("%Y-%m-%d"),
+                "Offset": best_offset,
+                "Hinweis": "",
+            }
+        )
+
+    if not rows:
+        return initial_capital, offsets_used, day_logs
+
+    result_df = pd.DataFrame(rows)
+    final_val, _ = run_simulation(
+        result_df, fee_rate=fee_rate, initial_cash=initial_capital
+    )
+    return final_val, offsets_used, day_logs
 
 
 def main():
-    symbol = "SOL/USDT"
-    lookback_months = 4
-    sim_months = 34
-    interval_hours = 12
-    fee_rate = 0.0001
-    initial_cash = 10000.0
-
-    # True  = auch handeln, wenn das beste Trainings-Offset negativ war
-    # False = bei negativem Trainings-ROI das nächste Fenster aussetzen
-    TRADE_IF_NEGATIVE_OFFSET = True
-    TRADE_IF_NEGATIVE_OFFSET = False
-
     exchange = ccxt.binance()
-    now = pd.Timestamp.now(tz="UTC").floor("h")
-    trade_start = now - pd.DateOffset(months=sim_months)
-    data_start = trade_start - pd.DateOffset(months=lookback_months)
-    since_timestamp = int(data_start.timestamp() * 1000)
 
-    print(f"Lade Daten für {symbol} ab {data_start.date()} ...")
-    ohlcv = fetch_all_ohlcv(exchange, symbol, "1h", since_timestamp)
+    top_200_symbols = [
+        "PORTAL/USDT"
+    ]
 
-    df = pd.DataFrame(
-        ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
+    start_date_str = "2026-04-15"
+    end_date_str = "2026-10-01"
+    print(start_date_str," - ",end_date_str)
+    interval_hours = 12
+    lookback_days = 1  # Offset jeden Tag neu aus den letzten N Tagen
+    fee_rate = 0.00075  # 0.075% Spot-Taker
+    initial_capital = 10000.0
+    offsets_to_test = list(range(24))
+
+    # Extra Historie: Lookback vor Start + 48h Puffer
+    lookback_ms = (lookback_days * 24 + 48) * 60 * 60 * 1000
+    since_timestamp = int(pd.Timestamp(start_date_str).timestamp() * 1000) - lookback_ms
+
+    portfolio_summary = []
+
+    print(
+        f"\nTägliches Walk-Forward für {len(top_200_symbols)} Coins | "
+        f"Lookback={lookback_days} Tage | Offsets 0-23 | "
+        f"Hold-Fenster {interval_hours}h | 4-Nachbar-Regel\n"
     )
-    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-    df.set_index("datetime", inplace=True)
-    df = df[~df.index.duplicated(keep="first")].sort_index()
 
-    cash = initial_cash
-    window_logs = []
-    window_start = trade_start
+    for symbol in top_200_symbols:
+        print(f"Teste: {symbol:<14} ...", end=" ", flush=True)
+        ohlcv = fetch_all_ohlcv(exchange, symbol, "1h", since_timestamp)
 
-    print("\n==========================================")
-    print(" WALK-FORWARD SIMULATION")
-    print("==========================================")
-    print(f"Coin                 : {symbol}")
-    print(f"Handelszeitraum      : {trade_start.date()} bis {now.date()}")
-    print(f"Fenster              : {lookback_months} Monate")
-    print(f"Haltedauer           : {interval_hours} Stunden")
-    print(f"Gebühr je Seite      : {fee_rate * 100:.3f} %")
-    print(f"Negatives Offset     : {'handeln' if TRADE_IF_NEGATIVE_OFFSET else 'aussetzen'}")
-    print(f"Startkapital         : {initial_cash:,.2f}")
-    print("==========================================\n")
+        if len(ohlcv) < 100:
+            print("Übersprungen (zu wenig Historie).")
+            continue
 
-    while window_start < now:
-        window_end = min(window_start + pd.DateOffset(months=lookback_months), now)
-        train_start = window_start - pd.DateOffset(months=lookback_months)
-        train_end = window_start
+        df = pd.DataFrame(
+            ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
+        )
+        df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+        df.set_index("datetime", inplace=True)
+        df = df[~df.index.duplicated(keep="first")]
+        df["date"] = df.index.date
 
-        best = find_best_offset(
+        data_start = df.index.min().strftime("%Y-%m-%d")
+        data_end = df.index.max().strftime("%Y-%m-%d")
+
+        hold = compute_buy_and_hold(
+            df, start_date_str, end_date_str, fee_rate, initial_capital
+        )
+        if hold is None:
+            print("Keine Hold-Daten.")
+            continue
+
+        final_val, offsets_used, day_logs = run_daily_walk_forward(
             df,
-            train_start,
-            train_end,
+            start_date_str,
+            end_date_str,
+            lookback_days,
             interval_hours,
+            offsets_to_test,
             fee_rate,
-            cash,
+            initial_capital,
         )
 
-        used_offset = None
-        train_roi = None
-        start_cash = cash
-        trades = 0
+        if not offsets_used:
+            print("Kein gültiger Walk-Forward-Offset.")
+            continue
 
-        if best is None:
-            action = "Kein Trainingsergebnis – kein Handel"
-        elif best["roi"] <= 0 and not TRADE_IF_NEGATIVE_OFFSET:
-            action = "Bestes Offset negativ – kein Handel"
-            used_offset = best["offset"]
-            train_roi = best["roi"]
-        else:
-            used_offset = best["offset"]
-            train_roi = best["roi"]
-            result_df = generate_result_df(
-                df, used_offset, interval_hours, window_start, window_end
-            )
-            trades = len(result_df)
-            if result_df.empty:
-                action = "Offset gewählt, aber keine Trades im Fenster"
-            else:
-                cash = run_simulation(
-                    result_df, fee_rate=fee_rate, initial_cash=cash
-                )
-                if best["roi"] <= 0:
-                    action = "Gehandelt (negatives Offset erlaubt)"
-                else:
-                    action = "Gehandelt"
+        profit = final_val - initial_capital
+        roi = (profit / initial_capital) * 100
+        last_offset = offsets_used[-1]
+        offsets_list_str = str(offsets_used)
 
-        window_roi = (cash / start_cash - 1.0) * 100.0 if start_cash else 0.0
-        sell_hour = None if used_offset is None else (used_offset + interval_hours) % 24
-
-        window_logs.append({
-            "Fenster Start": window_start.strftime("%Y-%m-%d"),
-            "Fenster Ende": window_end.strftime("%Y-%m-%d"),
-            "Train ROI %": train_roi,
-            "Offset": used_offset,
-            "Kauf": None if used_offset is None else f"{used_offset:02d}:00",
-            "Verkauf": None if sell_hour is None else f"{sell_hour:02d}:00",
-            "Aktion": action,
-            "Trades": trades,
-            "Start": start_cash,
-            "Ende": cash,
-            "Fenster %": window_roi,
-        })
-
+        portfolio_summary.append(
+            {
+                "Coin": symbol,
+                "Letzter Offset": f"{last_offset:02d}:00",
+                "Beste Offsets": offsets_list_str,
+                "Tage": len(offsets_used),
+                "Daten von": f"{data_start} bis {data_end}",
+                "Strategie ROI (%)": roi,
+                "Hold ROI (%)": hold["Hold ROI (%)"],
+                "Hold Kurs (%)": hold["Hold Kursbewegung (%)"],
+                "Edge vs Hold (%)": roi - hold["Hold ROI (%)"],
+            }
+        )
         print(
-            f"{window_start.date()} → {window_end.date()} | "
-            f"Train-ROI: {train_roi if train_roi is not None else float('nan'):.2f}% | "
-            f"Offset: {used_offset} | {action} | "
-            f"{start_cash:,.2f} → {cash:,.2f}"
+            f"letzter Offset {last_offset:02d}:00 | Strat {roi:+.2f}% | "
+            f"Hold {hold['Hold ROI (%)']:+.2f}% | "
+            f"Edge {roi - hold['Hold ROI (%)']:+.2f}% | "
+            f"Offsets {offsets_list_str}"
         )
 
-        window_start = window_end
+    if portfolio_summary:
+        summary_df = pd.DataFrame(portfolio_summary)
+        summary_df = summary_df.sort_values(by="Strategie ROI (%)", ascending=False)
+        pd.set_option("display.float_format", lambda x: "%.2f" % x)
+        pd.set_option("display.max_colwidth", 200)
+        pd.set_option("display.width", 200)
 
-    profit = cash - initial_cash
-    roi = (profit / initial_cash) * 100.0
-    log_df = pd.DataFrame(window_logs)
-
-    pd.set_option("display.float_format", lambda x: f"{x:.2f}")
-    print("\nFENSTER-ÜBERSICHT:")
-    print(log_df.to_string(index=False))
-    print("\n==========================================")
-    print(f"Endkapital      : {cash:,.2f}")
-    print(f"Gewinn/Verlust  : {profit:+,.2f} ({roi:+.2f} %)")
-    print("==========================================")
+        print("\n" + "=" * 140)
+        print(
+            f" TÄGLICHES WALK-FORWARD (Lookback {lookback_days}d, 4-Nachbar-Regel) "
+            "| inkl. Buy-and-Hold"
+        )
+        print("=" * 140)
+        print(summary_df.to_string(index=False))
+        print("=" * 140)
+        print("\nBester Offset je Handelstag (Reihenfolge = Zeitverlauf):\n")
+        for _, row in summary_df.iterrows():
+            print(f"{row['Coin']:<16} {row['Beste Offsets']}")
+        print("=" * 140)
+        print(
+            "Hinweis: Für jeden Handelstag wird der beste Offset aus den "
+            f"letzten {lookback_days} Tagen bestimmt (Score = Summe der ROIs "
+            "der 4 Nachbarstunden) und nur an diesem Tag gehandelt. "
+            "Kapital wird über die Tage fortgeschrieben. "
+            "Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, "
+            "mit derselben fee_rate auf beiden Seiten."
+        )
+        summary_df.to_csv("walkforward_summary.csv", index=False)
+        print("\nZusammenfassung gespeichert: walkforward_summary.csv")
 
 
 if __name__ == "__main__":

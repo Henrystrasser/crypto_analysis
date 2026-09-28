@@ -139,12 +139,12 @@ def run_evening_buy_next_morning_sell(
 
 
 def main():
-    symbol = "SHIB/USDT"
-    days =400
-    offset_hours = 16
+    symbol = "POL/USDT"
+    days =300
+    offset_hours = 20
     interval_hours = 12
     initial_cash = 10000.0
-    fee_rate = 0.0004
+    fee_rate = 0.00075
 
     # "down" = Abstiegstag am Abend kaufen
     # "up"   = Anstiegstag am Abend kaufen

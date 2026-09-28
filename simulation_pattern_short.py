@@ -178,12 +178,12 @@ def run_pattern_bot(
 
 
 def main():
-    symbol = "BCH/USDT"
+    symbol = "UNI/USDT"
     days = 200
     offset_hours =6
     interval_hours = 12
     initial_cash = 10000.0
-    fee_rate = 0.001
+    fee_rate = 0.0002
 
     TRADE_LONG = True    # Abstiegstag → Long über Nacht
     TRADE_SHORT = True   # Anstiegstag → Short über Nacht

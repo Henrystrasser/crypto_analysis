@@ -76,7 +76,7 @@ def pattern_rate_for_offset(df, offset_hours, interval_hours=12):
 
 
 def main():
-    days = 300
+    days = 100
     interval_hours = 12
     offsets = list(range(24))
 
@@ -105,6 +105,7 @@ def main():
     summary_rows = []
 
     for i, symbol in enumerate(top_50_symbols, start=1):
+        symbol="POL/USDT"
         print(f"[{i}/{len(top_50_symbols)}] Lade {symbol} ...")
         try:
             ohlcv = fetch_all_ohlcv(exchange, symbol, "1h", since_timestamp)

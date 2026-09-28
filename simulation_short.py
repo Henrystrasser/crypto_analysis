@@ -3,258 +3,260 @@ import pandas as pd
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
-  all_ohlcv = []
-  limit = 1000
-  current_since = since_timestamp
+    all_ohlcv = []
+    limit = 1000
+    current_since = since_timestamp
 
-  while True:
-    try:
-      ohlcv = exchange.fetch_ohlcv(
-          symbol, timeframe=timeframe, since=current_since, limit=limit
-      )
-      if not ohlcv:
-        break
+    while True:
+        try:
+            ohlcv = exchange.fetch_ohlcv(
+                symbol, timeframe=timeframe, since=current_since, limit=limit
+            )
+            if not ohlcv:
+                break
 
-      all_ohlcv.extend(ohlcv)
-      next_since = ohlcv[-1][0] + 1
+            all_ohlcv.extend(ohlcv)
+            next_since = ohlcv[-1][0] + 1
 
-      if next_since <= current_since:
-        break
-      current_since = next_since
+            if next_since <= current_since:
+                break
+            current_since = next_since
 
-      if len(ohlcv) < limit:
-        break
-    except Exception as e:
-      print(f"Fehler beim Laden: {e}")
-      break
+            if len(ohlcv) < limit:
+                break
+        except Exception as e:
+            print(f"Fehler beim Laden: {e}")
+            break
 
-  return all_ohlcv
-
-
-# ==========================================
-# ANPASSBARE HANDELS-LOGIK FUNKTIONEN
-# ==========================================
-def custom_short_condition(row, portfolio_state):
-  """Bedingung für den Short-Trade (Tag)."""
-  return True
+    return all_ohlcv
 
 
-def custom_long_condition(row, portfolio_state):
-  """Bedingung für den Long-Trade (Nacht)."""
-  return True
+def custom_buy_condition(row, portfolio_state):
+    return True
 
 
-# ==========================================
-# SIMULATIONS-ENGINE (24/7: Wechsel zwischen Short & Long)
-# ==========================================
-def run_simulation(results_df, fee_rate=0.0002, initial_cash=10000.0):
-  cash = initial_cash
-  trade_log = []
-
-  for i in range(len(results_df)):
-    row = results_df.iloc[i]
-
-    # ----------------------------------------------------
-    # LEG 1: TAG (Price_1 bis Price_2) -> SHORT
-    # ----------------------------------------------------
-    p_in_short = row["Price_1"]
-    time_in_short = f"{row['Date']} {row['Time_1']}"
-    p_out_short = row["Price_2"]
-    time_out_short = f"{row['Date']} {row['Time_2']}"
-
-    if custom_short_condition(row, {"cash": cash}):
-      # Gebühr beim Short-Einstieg
-      cash = cash * (1 - fee_rate)
-      # Short-Multiplikator: Gewinn wenn Kurs sinkt (P_in > P_out)
-      short_multiplier = 1.0 + (p_in_short - p_out_short) / p_in_short
-      cash = cash * short_multiplier
-      # Gebühr beim Short-Ausstieg
-      cash = cash * (1 - fee_rate)
-
-      trade_log.append({
-          "Time": time_in_short,
-          "Action": "SHORT_OPEN",
-          "Price": p_in_short,
-          "Cash": cash,
-      })
-      trade_log.append({
-          "Time": time_out_short,
-          "Action": "SHORT_CLOSE",
-          "Price": p_out_short,
-          "Cash": cash,
-      })
-
-    # ----------------------------------------------------
-    # LEG 2: NACHT (Price_2 bis Price_1 des Folgetages) -> LONG
-    # ----------------------------------------------------
-    if i + 1 < len(results_df):
-      next_row = results_df.iloc[i + 1]
-      p_in_long = p_out_short  # Startet da, wo Short endete
-      time_in_long = time_out_short
-      p_out_long = next_row["Price_1"]
-      time_out_long = f"{next_row['Date']} {next_row['Time_1']}"
-
-      if custom_long_condition(next_row, {"cash": cash}):
-        # Gebühr beim Long-Einstieg
-        cash = cash * (1 - fee_rate)
-        # Long-Multiplikator: Gewinn wenn Kurs steigt
-        long_multiplier = p_out_long / p_in_long
-        cash = cash * long_multiplier
-        # Gebühr beim Long-Ausstieg
-        cash = cash * (1 - fee_rate)
-
-        trade_log.append({
-            "Time": time_in_long,
-            "Action": "LONG_OPEN",
-            "Price": p_in_long,
-            "Cash": cash,
-        })
-        trade_log.append({
-            "Time": time_out_long,
-            "Action": "LONG_CLOSE",
-            "Price": p_out_long,
-            "Cash": cash,
-        })
-
-  return cash, pd.DataFrame(trade_log)
+def custom_sell_condition(row, portfolio_state):
+    return True
 
 
-def generate_result_df(
-    df, offset_hours, interval_hours, start_date_str, end_date_str
-):
-  results = []
-  for date, group in df.groupby("date"):
-    t1 = offset_hours % 24
-    t2 = (offset_hours + interval_hours) % 24
-    hour_data = group[group.index.hour.isin([t1, t2])]
-
-    if len(hour_data) >= 2:
-      hour_data = hour_data.sort_index()
-      results.append({
-          "Date": date,
-          "Time_1": hour_data.index[0].strftime("%H:%M"),
-          "Price_1": hour_data.iloc[0]["close"],
-          "Time_2": hour_data.index[1].strftime("%H:%M"),
-          "Price_2": hour_data.iloc[1]["close"],
-      })
-
-  result_df = pd.DataFrame(results)
-
-  if start_date_str and not result_df.empty:
-    result_df = result_df[
-        result_df["Date"] >= pd.to_datetime(start_date_str).date()
-    ]
-  if end_date_str and not result_df.empty:
-    result_df = result_df[
-        result_df["Date"] <= pd.to_datetime(end_date_str).date()
-    ]
-
-  return result_df
+def _apply_long(cash, price_buy, price_sell, fee_rate):
+    """100% long: kaufen zu price_buy, verkaufen zu price_sell."""
+    effective_cash = cash * (1 - fee_rate)
+    crypto = effective_cash / price_buy
+    gross_cash = crypto * price_sell
+    return gross_cash * (1 - fee_rate)
 
 
-# ==========================================
-# HAUPTPROGRAMM & KONFIGURATION
-# ==========================================
+def _apply_short(cash, price_open, price_close, fee_rate):
+    """
+    100% short: öffnen zu price_open, schließen zu price_close.
+    Spiegelbild zur Long-Gebührenlogik:
+        cash * (price_open / price_close) * (1 - fee)^2
+    Preis fällt -> Gewinn, Preis steigt -> Verlust.
+    """
+    effective_cash = cash * (1 - fee_rate)
+    size = effective_cash / price_open
+    # Rückkauf der Short-Größe; Restkapital = 2*effective - cover, danach Fee auf den Close
+    cover_cost = size * price_close
+    residual = effective_cash + (effective_cash - cover_cost)
+    return residual * (1 - fee_rate)
+
+
+def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
+    """
+    Pro Zeile:
+      Long  von Date_Buy/Time_Buy  (Offset)      bis Date_Sell/Time_Sell (Offset+12)
+      Short von Date_Sell/Time_Sell (Offset+12)  bis zum Price_Buy der *nächsten* Zeile
+            (das sind die anderen 12 Stunden bis zum nächsten Offset)
+
+    Letzte Zeile: nur noch Long, kein offener Short ohne Cover-Preis.
+    """
+    cash = initial_cash
+    trade_log = []
+
+    n = len(results_df)
+    for i in range(n):
+        row = results_df.iloc[i]
+        price_buy = float(row["Price_Buy"])
+        price_sell = float(row["Price_Sell"])
+        time_buy = f"{row['Date_Buy']} {row['Time_Buy']}"
+        time_sell = f"{row['Date_Sell']} {row['Time_Sell']}"
+
+        # --- LONG 12h ---
+        if custom_buy_condition(row, {"cash": cash}):
+            cash_before = cash
+            cash = _apply_long(cash, price_buy, price_sell, fee_rate)
+            trade_log.append(
+                {
+                    "Time": time_buy,
+                    "Action": "LONG_OPEN",
+                    "Price": price_buy,
+                    "Cash": cash_before,
+                }
+            )
+            trade_log.append(
+                {
+                    "Time": time_sell,
+                    "Action": "LONG_CLOSE",
+                    "Price": price_sell,
+                    "Cash": cash,
+                }
+            )
+
+        # --- SHORT 12h bis zum nächsten Offset ---
+        if i + 1 < n and custom_sell_condition(row, {"cash": cash}):
+            next_row = results_df.iloc[i + 1]
+            price_cover = float(next_row["Price_Buy"])
+            time_cover = f"{next_row['Date_Buy']} {next_row['Time_Buy']}"
+            cash_before = cash
+            cash = _apply_short(cash, price_sell, price_cover, fee_rate)
+            trade_log.append(
+                {
+                    "Time": time_sell,
+                    "Action": "SHORT_OPEN",
+                    "Price": price_sell,
+                    "Cash": cash_before,
+                }
+            )
+            trade_log.append(
+                {
+                    "Time": time_cover,
+                    "Action": "SHORT_CLOSE",
+                    "Price": price_cover,
+                    "Cash": cash,
+                }
+            )
+
+    return cash, pd.DataFrame(trade_log)
+
+
+def buy_and_hold_roi(df, start_date_str, end_date_str, fee_rate):
+    window = df.copy()
+    if start_date_str:
+        window = window[window.index >= pd.Timestamp(start_date_str)]
+    if end_date_str:
+        window = window[window.index <= pd.Timestamp(end_date_str) + pd.Timedelta(days=1)]
+    if window.empty:
+        return None
+
+    first = float(window.iloc[0]["close"])
+    last = float(window.iloc[-1]["close"])
+    # gleiche Gebühr wie ein einmaliger Long: kaufen + verkaufen
+    return ((last / first) * (1 - fee_rate) ** 2 - 1.0) * 100
+
+
+def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_date_str):
+    results = []
+    dates = df["date"].unique()
+    for d in dates:
+        current_dt = pd.to_datetime(d) + pd.Timedelta(hours=offset_hours)
+        target_sell_dt = current_dt + pd.Timedelta(hours=interval_hours)
+
+        if current_dt in df.index and target_sell_dt in df.index:
+            results.append(
+                {
+                    "Date_Buy": current_dt.strftime("%Y-%m-%d"),
+                    "Time_Buy": current_dt.strftime("%H:%M"),
+                    "Price_Buy": df.loc[current_dt, "close"],
+                    "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
+                    "Time_Sell": target_sell_dt.strftime("%H:%M"),
+                    "Price_Sell": df.loc[target_sell_dt, "close"],
+                }
+            )
+
+    result_df = pd.DataFrame(results)
+    if start_date_str and not result_df.empty:
+        result_df = result_df[result_df["Date_Buy"] >= start_date_str]
+    if end_date_str and not result_df.empty:
+        result_df = result_df[result_df["Date_Buy"] <= end_date_str]
+    return result_df
+
+
 def main():
-  exchange = ccxt.binance()
-  temp_symbol = "UNI/USDT"
+    exchange = ccxt.binance()
+    temp_symbol = "BTC/USDT"
 
-  # --- HIER ZEITRAUM ANPASSEN ---
-  start_date_str = "2022-06-30"  # Start des Backtests (YYYY-MM-DD)
-  end_date_str = "2027-06-30"  # Ende des Backtests (YYYY-MM-DD)
-  interval_hours = 12
-  fee_rate = 0.0002  # 0.02% Futures Maker-Gebühr
-  initial_capital = 10000.0
+    start_date_str = "2023-02-01"
+    end_date_str = "2027-10-30"
+    interval_hours = 12
+    fee_rate = 0.00075
+    initial_capital = 10000.0
 
-  # Offset-Vergleich (Testet verschiedene Startzeiten für den Wechsel)
-  COMPARE_OFFSETS = True
-  offsets_to_test = [0, 3, 6, 8, 10, 13, 16, 19, 22]
+    COMPARE_OFFSETS = True
+    offsets_to_test = list(range(24))
 
-  since_timestamp = (
-      int(pd.Timestamp(start_date_str).timestamp() * 1000)
-      - 48 * 60 * 60 * 1000
-  )
-
-  print(
-      f"Lade historische Daten für {temp_symbol} ab dem"
-      f" {start_date_str}..."
-  )
-  ohlcv = fetch_all_ohlcv(exchange, temp_symbol, "1h", since_timestamp)
-
-  df = pd.DataFrame(
-      ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
-  )
-  df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
-  df.set_index("datetime", inplace=True)
-  df = df[~df.index.duplicated(keep="first")]
-  df["date"] = df.index.date
-
-  if COMPARE_OFFSETS:
-    print(f"\n==========================================")
-    print(
-        f" STARTE 24/7 (SHORT/LONG) OFFSET-VERGLEICH FÜR: {offsets_to_test}"
-    )
-    print(f"==========================================")
-
-    comparison_results = []
-
-    for offset in offsets_to_test:
-      result_df = generate_result_df(
-          df, offset, interval_hours, start_date_str, end_date_str
-      )
-      if result_df.empty:
-        continue
-
-      final_val, _ = run_simulation(
-          result_df, fee_rate=fee_rate, initial_cash=initial_capital
-      )
-      profit = final_val - initial_capital
-      roi = (profit / initial_capital) * 100
-
-      comparison_results.append({
-          "Offset (Stunde)": offset,
-          "Uhrzeit 1": f"{(offset)%24:02d}:00",
-          "Uhrzeit 2": f"{(offset + interval_hours)%24:02d}:00",
-          "Endkapital (USDT)": final_val,
-          "Gewinn/Verlust": profit,
-          "ROI (%)": roi,
-      })
-
-    comp_df = pd.DataFrame(comparison_results)
-    pd.set_option("display.float_format", lambda x: "%.2f" % x)
-    print("\nERGEBNIS-ÜBERSICHT (24/7 Strategie):")
-    print(comp_df.to_string(index=False))
-    print("==========================================\n")
-
-  else:
-    offset_hours = 7
-    result_df = generate_result_df(
-        df, offset_hours, interval_hours, start_date_str, end_date_str
+    since_timestamp = (
+        int(pd.Timestamp(start_date_str).timestamp() * 1000) - 48 * 60 * 60 * 1000
     )
 
-    if result_df.empty:
-      print("Fehler: Keine Daten im gewählten Datumsbereich gefunden.")
-      return
+    print(f"Lade {temp_symbol} ab {start_date_str}...")
+    ohlcv = fetch_all_ohlcv(exchange, temp_symbol, "1h", since_timestamp)
 
-    print(
-        f"\n--- SIMULATION STARTET (Offset: {offset_hours}h) ({start_date_str}"
-        f" bis {end_date_str}) ---"
+    df = pd.DataFrame(
+        ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
     )
-    print(f"Startkapital: {initial_capital:,.2f} USDT")
+    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+    df.set_index("datetime", inplace=True)
+    df = df[~df.index.duplicated(keep="first")]
+    df["date"] = df.index.date
 
-    final_val_fee, _ = run_simulation(
-        result_df, fee_rate=fee_rate, initial_cash=initial_capital
-    )
-    profit_fee = final_val_fee - initial_capital
-    print(
-        f"Endkapital (mit {fee_rate*100}% Gebühr):"
-        f" {final_val_fee:,.2f} USDT"
-    )
-    print(
-        f"Gewinn/Verlust: {profit_fee:+,.2f} USDT"
-        f" ({(profit_fee/initial_capital)*100:.2f}%)"
-    )
+    hold_roi = buy_and_hold_roi(df, start_date_str, end_date_str, fee_rate)
+    if hold_roi is None:
+        print("Keine Daten für Buy-and-Hold.")
+        return
+
+    if COMPARE_OFFSETS:
+        print(
+            f"\n{temp_symbol}  {start_date_str} → {end_date_str}  "
+            f"Hold ROI: {hold_roi:+.2f}%  |  Long {interval_hours}h + Short {interval_hours}h\n"
+        )
+        rows = []
+
+        for offset in offsets_to_test:
+            result_df = generate_result_df(
+                df, offset, interval_hours, start_date_str, end_date_str
+            )
+            if result_df.empty:
+                continue
+
+            final_val, _ = run_simulation(
+                result_df, fee_rate=fee_rate, initial_cash=initial_capital
+            )
+            strat_roi = (final_val / initial_capital - 1.0) * 100
+            sell_hour = (offset + interval_hours) % 24
+            rows.append(
+                {
+                    "Long von": f"{offset:02d}:00",
+                    "Short von": f"{sell_hour:02d}:00",
+                    "ROI %": strat_roi,
+                    "Hold ROI %": hold_roi,
+                    "vs Hold": strat_roi - hold_roi,
+                }
+            )
+
+        comp_df = pd.DataFrame(rows)
+        pd.set_option("display.float_format", lambda x: "%.2f" % x)
+        print(comp_df.to_string(index=False))
+        print()
+    else:
+        offset_hours = 0
+        result_df = generate_result_df(
+            df, offset_hours, interval_hours, start_date_str, end_date_str
+        )
+        if result_df.empty:
+            print("Keine Daten im gewählten Datumsbereich.")
+            return
+
+        final_val, _ = run_simulation(
+            result_df, fee_rate=fee_rate, initial_cash=initial_capital
+        )
+        strat_roi = (final_val / initial_capital - 1.0) * 100
+        print(
+            f"{temp_symbol} Offset {offset_hours:02d}:00  "
+            f"ROI {strat_roi:+.2f}%  Hold {hold_roi:+.2f}%  "
+            f"vs Hold {strat_roi - hold_roi:+.2f}%"
+        )
 
 
 if __name__ == "__main__":
-  main()
+    main()

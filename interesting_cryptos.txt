@@ -1,95 +1,4 @@
-Lade historische 1h-Daten für UNI/USDT für die letzten 580 Tage (dies kann einen Moment dauern)...
-
---- ERGEBNISSE (Langzeittest mit Muster-Check) ---
-Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
-Anzahl analysierter Tage: 580
-Tage, an denen es früh billiger war: 258 (44.5%)
-Tage mit positivem Pattern-Match (Case 1/2): 289 (49.8%)
-Durchschnittliche prozentuale Änderung: -0.10%
-
---- SIMULATION STARTET (2021-01-01 bis 2026-12-31) ---
-Startkapital: 10,000.00 USDT
-Anzahl Handels-Tage im Test: 2079
-
-[1] Ohne Gebühren:
-Endkapital: 127,082.80 USDT
-Gewinn/Verlust: +117,082.80 USDT (1170.83%)
-
-[2] Mit Gebühr (0.1% pro Trade):
-Endkapital: 1,985.28 USDT
-Gewinn/Verlust: -8,014.72 USDT (-80.15%)
-Gebühren-Fress-Effekt: 125,097.53 USDT Unterschied
-
-Lade historische Daten für UNI/USDT ab dem 2021-01-01...
-
-Offset 7!!
---- SIMULATION STARTET (2021-01-01 bis 2026-12-31) ---
-Startkapital: 10,000.00 USDT
-Anzahl Handels-Tage im Test: 2078
-
-[1] Ohne Gebühren:
-Endkapital: 218,289.12 USDT
-Gewinn/Verlust: +208,289.12 USDT (2082.89%)
-
-[2] Mit Gebühr (0.1% pro Trade):
-Endkapital: 95,081.77 USDT
-Gewinn/Verlust: +85,081.77 USDT (850.82%)
-Gebühren-Fress-Effekt: 123,207.34 USDT Unterschied
-
-
-
-
-
-Lade historische 1h-Daten für POL/USDT für die letzten 580 Tage (dies kann einen Moment dauern)...
-
---- ERGEBNISSE (Langzeittest mit Muster-Check) ---
-Getestetes Intervall: Start um Stunde 7:00, Ende um Stunde 19:00 (Offset: 7h)
-Anzahl analysierter Tage: 579
-Tage, an denen es früh billiger war: 251 (43.4%)
-Tage mit positivem Pattern-Match (Case 1/2): 289 (49.9%)
-Durchschnittliche prozentuale Änderung: -0.34%
-
-
-Lade historische 1h-Daten für SHIB/USDT für die letzten 1580 Tage (dies kann einen Moment dauern)...
-
---- ERGEBNISSE (Langzeittest mit Muster-Check) ---
-Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
-Anzahl analysierter Tage: 1580
-Tage, an denen es früh billiger war: 689 (43.6%)
-Tage mit positivem Pattern-Match (Case 1/2): 773 (48.9%)
-Durchschnittliche prozentuale Änderung: -0.10%
-
-Lade historische 1h-Daten für SUI/USDT für die letzten 1580 Tage (dies kann einen Moment dauern)...
-
---- ERGEBNISSE (Langzeittest mit Muster-Check) ---
-Getestetes Intervall: Start um Stunde 5:00, Ende um Stunde 17:00 (Offset: 5h)
-Anzahl analysierter Tage: 1226
-Tage, an denen es früh billiger war: 546 (44.5%)
-Tage mit positivem Pattern-Match (Case 1/2): 604 (49.3%)
-Durchschnittliche prozentuale Änderung: -0.05%
-
-
-
-
-Lade historische Daten für DOGE/USDT ab dem 2022-06-30...
-
---- SIMULATION STARTET (2022-06-30 bis 2026-06-30) ---
-Startkapital: 10,000.00 USDT
-Anzahl Handels-Tage im Test: 1462
-
-[1] Ohne Gebühren:
-Endkapital: 107,379.04 USDT
-Gewinn/Verlust: +97,379.04 USDT (973.79%)
-
-[2] Mit Gebühr (0.1% pro Trade):
-Endkapital: 59,841.93 USDT
-Gewinn/Verlust: +49,841.93 USDT (498.42%)
-Gebühren-Fress-Effekt: 47,537.11 USDT Unterschied
-
-
-Lade historische Daten für XMR/USDT ab dem 2022-06-30...
-
-==========================================
+#==========================================
  STARTE OFFSET-VERGLEICH FÜR: [0, 3, 6, 8, 10]
 ==========================================
 
@@ -118,3 +27,284 @@ PENDLE/USDT            8h    34163.86        24163.86   241.64
 
 
 ZCASH hat in 9 Monaten seit 2026 600% gemacht auf offset = 9! Aber anderer Offset als in vorigen Jahren
+
+
+POL hat um 20 Uhr offset beste offset und um 20 Uhr ausserdem 60% pattern!
+
+NEXO hat 200% return über 2 Jahre mit Strat, obwohl er negativen ROI als Coin hat. sehr konsisten im plus bei 7/8 Uhr
+
+PORTAL auf 15 Uhr performt sehr konsistent über dem Hold roi! 280%! sehr konsistent!
+
+
+koppelbar mit NEXO: WLD um 19 Uhr
+auch mit HOT um 19 Uhr
+Ace vll auf 3 Uhr?
+NFP um 9 Uhr?
+ORDI at 5 seems consistent
+
+
+BTC Correlation
+UNI scheint zu korrelieren bei 192 hours
+ENA scheint zumindeste ROI outzuperformen
+ONDOUSDT outperformed auch
+Pepe vll
+XLM auch
+Morph bei BTC Fall
+LTC auch sehr gut +100%; SUi auch
+AAVE +200%
+COIN XRPUSDT | UP | Buy nach BTC ≥ +1.0% / 30m | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 918 Trades
+Buy&Hold über Zeitraum: 2024-07-28 14:10:00 UTC → 2026-09-26 14:05:00 UTC | ROI +157.51%
+========================================================================================================================
+    5m: n=918/918 (used/raw)  %pos=   30%  Ø=-0.15%  Compound=-76.20%
+   30m: n=785/918 (used/raw)  %pos=   38%  Ø=-0.11%  Compound=-60.33%
+    2h: n=630/918 (used/raw)  %pos=   48%  Ø=+0.08%  Compound=+40.07%
+   12h: n=394/918 (used/raw)  %pos=   47%  Ø=+0.11%  Compound=+17.28%
+   24h: n=299/918 (used/raw)  %pos=   46%  Ø=+0.43%  Compound=+154.24%
+   48h: n=211/918 (used/raw)  %pos=   45%  Ø=+0.77%  Compound=+219.97%
+   96h: n=132/918 (used/raw)  %pos=   43%  Ø=+1.42%  Compound=+223.11%
+  192h: n=78/915 (used/raw)  %pos=   50%  Ø=+3.00%  Compound=+263.89%
+
+COIN TRXUSDT | UP | Buy nach BTC ≥ +1.0% / 30m | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 918 Trades
+Buy&Hold über Zeitraum: 2024-07-28 14:10:00 UTC → 2026-09-26 14:05:00 UTC | ROI +144.64%
+========================================================================================================================
+    5m: n=918/918 (used/raw)  %pos=   13%  Ø=-0.14%  Compound=-71.73%
+   30m: n=785/918 (used/raw)  %pos=   30%  Ø=-0.11%  Compound=-57.59%
+    2h: n=630/918 (used/raw)  %pos=   44%  Ø=-0.05%  Compound=-30.95%
+   12h: n=394/918 (used/raw)  %pos=   54%  Ø=+0.24%  Compound=+112.64%
+   24h: n=299/918 (used/raw)  %pos=   54%  Ø=+0.44%  Compound=+205.49%
+   48h: n=211/918 (used/raw)  %pos=   54%  Ø=+0.62%  Compound=+186.89%
+
+COIN BCHUSDT | UP | Buy nach BTC ≥ +1.0% / 30m | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 918 Trades
+Buy&Hold über Zeitraum: 2024-07-28 14:10:00 UTC → 2026-09-26 14:05:00 UTC | ROI -16.70%
+========================================================================================================================
+    5m: n=918/918 (used/raw)  %pos=   30%  Ø=-0.15%  Compound=-75.21%
+   30m: n=785/918 (used/raw)  %pos=   41%  Ø=-0.10%  Compound=-54.89%
+    2h: n=630/918 (used/raw)  %pos=   46%  Ø=+0.04%  Compound=+13.49%
+   12h: n=394/918 (used/raw)  %pos=   48%  Ø=+0.10%  Compound=+12.59%
+   24h: n=299/918 (used/raw)  %pos=   52%  Ø=+0.40%  Compound=+136.54%
+   48h: n=211/918 (used/raw)  %pos=   45%  Ø=+0.57%  Compound=+108.92%
+
+gegen Eth (up): 192h   hat nicht viel ergeben
+XRPUSDT        UP       89 2107    49%    +2.34%   +203.96%   +151.10%    +52.86%   +111.96%
+XLMUSDT        UP       89 2107    52%    +3.12%   +202.90%   +113.35%    +89.55%   +147.69%
+TRXUSDT        UP       89 2107    55%    +1.53%   +151.80%   +144.83%     +6.97%    +35.75%
+AAVEUSDT       UP       89 2107    51%    +1.79%   +102.80%    +50.79%    +52.00%    +67.05%
+HBARUSDT       UP       85  857    47%    +2.59%   +128.71%    +36.53%    +92.18%    +94.00%
+
+Ether down:
+HBARUSDT       DOWN    148  877    45%    +1.21%    +90.63%    +36.53%    +54.10%   +132.55%
+
+XRP (up) 96h
+PEPE evtl?
+QNTUSDT        UP      153 1098    44%    +1.11%   +181.39%   +123.38%    +58.02%   +213.07%
+HBARUSDT       UP      153 1098    42%    +1.04%    +79.08%    +36.50%    +42.58%   +118.68%
+TAOUSDT        UP      153 1098    46%    +0.93%    +38.37%     +0.18%    +38.19%   +101.34%
+ENAUSDT        UP      153 1098    43%    +1.20%    +13.81%    -39.52%    +53.33%    +87.69%
+
+BNB 96:
+Viele Coins mit 100%+!!
+HBARUSDT       UP      121  519    46%    +1.99%   +336.76%    +37.22%   +299.54%   +392.32%
+DASHUSDT       UP      121  519    48%    +2.27%   +333.41%   +148.45%   +184.95%   +390.32%
+CRVUSDT        UP      121  519    48%    +2.09%   +330.27%    +32.55%   +297.72%   +396.99%
+
+BNB up96 
+XRPUSDT        UP      197  832    47%    +1.65%   +867.35%   +306.99%   +560.36%   +724.04%
+HBARUSDT       UP      197  832    50%    +1.70%   +768.46%    +50.59%   +717.87%   +861.11%
+PEPEUSDT       UP      189  832    44%    +2.65%   +637.05%    +42.78%   +594.26%   +703.06%
+AAVEUSDT       UP      197  832    55%    +1.50%   +605.07%   +100.59%   +504.48%   +616.17%
+TRXUSDT        UP      197  832    61%    +1.13%   +510.77%   +399.55%   +111.22%   +327.40%
+BCHUSDT        UP      197  832    47%    +1.50%   +491.37%   +153.52%   +337.86%   +448.23%
+DOGEUSDT       UP      197  832    51%    +1.54%   +477.88%    +29.63%   +448.25%   +519.73%
+DASHUSDT       UP      197  832    50%    +1.61%   +472.36%    +23.80%   +448.56%   +543.53%
+NEARUSDT       UP      197  832    49%    +1.58%   +418.11%   +154.48%   +263.63%   +221.88%
+XLMUSDT        UP      197  832    51%    +1.37%   +381.14%   +149.80%   +231.34%   +277.08%
+ALGOUSDT       UP      197  832    50%    +1.21%   +275.52%    -45.44%   +320.96%   +307.25%
+
+BNB up 96h (3 Jahre)
+XRPUSDT        UP      197  832    47%    +1.65%   +867.35%   +306.99%   +560.36%   +724.04%
+HBARUSDT       UP      197  832    50%    +1.70%   +768.46%    +50.59%   +717.87%   +861.11%
+PEPEUSDT       UP      189  832    44%    +2.65%   +637.05%    +42.78%   +594.26%   +703.06%
+AAVEUSDT       UP      197  832    55%    +1.50%   +605.07%   +100.59%   +504.48%   +616.17%
+TRXUSDT        UP      197  832    61%    +1.13%   +510.77%   +399.55%   +111.22%   +327.40%
+BCHUSDT        UP      197  832    47%    +1.50%   +491.37%   +153.52%   +337.86%   +448.23%
+DOGEUSDT       UP      197  832    51%    +1.54%   +477.88%    +29.63%   +448.25%   +519.73%
+DASHUSDT       UP      197  832    50%    +1.61%   +472.36%    +23.80%   +448.56%   +543.53%
+NEARUSDT       UP      197  832    49%    +1.58%   +418.11%   +154.48%   +263.63%   +221.88%
+
+BNB up 96 von 2024 - 2025:
+HBARUSDT       UP        60(272)    53%    +5.09%   +923.99%   +333.23%   +590.76%   +816.41%
+XRPUSDT        UP        60(272)    55%    +3.93%   +590.41%   +406.65%   +183.76%   +394.23%
+CRVUSDT        UP        60(272)    57%    +4.43%   +572.46%   +149.54%   +422.92%   +601.76%
+XLMUSDT        UP        60(272)    58%    +3.78%   +394.53%   +297.24%    +97.29%   +338.78%
+ALGOUSDT       UP        60(272)    48%    +3.43%   +381.13%    +68.72%   +312.42%   +311.54%
+ADAUSDT        UP        60(272)    48%    +3.35%   +379.06%   +134.43%   +244.63%   +304.61%
+LINKUSDT       UP        60(272)    58%    +3.20%   +377.35%    +96.97%   +280.37%   +304.48%
+DOGEUSDT       UP        60(272)    58%    +3.44%   +354.69%   +134.37%   +220.32%   +382.97%
+AAVEUSDT       UP        60(272)    62%    +3.02%   +330.08%   +113.32%   +216.76%   +232.69%
+LTCUSDT        UP        60(272)    55%    +2.56%   +269.51%    +65.18%   +204.33%   +293.87%
+
+BNB down 24:
+HBARUSDT       DOWN    280  577    44%    +0.72%   +290.88%    +37.22%   +253.66%   +368.74%
+CRVUSDT        DOWN    280  577    47%    +0.63%   +215.13%    +32.55%   +182.58%   +259.91%
+UNIUSDT        DOWN    280  577    50%    +0.56%   +178.85%    +26.76%   +152.09%    +93.40%
+SUIUSDT        DOWN    280  577    50%    +0.55%   +176.08%    +64.37%   +111.71%   +268.18% seem interesting! high down!
+AAVEUSDT       DOWN    280  577    52%    +0.52%   +168.46%    +51.18%   +117.29%   +229.94% seems consistent
+ZROUSDT        DOWN    280  577    50%    +0.52%   +119.65%    -62.90%   +182.55%   +185.24%
+TAOUSDT        DOWN    280  577    48%    +0.50%   +119.49%     +0.03%   +119.46%   +194.22%
+ONDOUSDT       DOWN    163  577    48%    +0.64%   +119.21%    -38.06%   +157.27%   +126.83%
+
+BNB down 24 (3 Jahre)
+SUIUSDT        DOWN    435  916    52%    +0.82%  +1391.55%     -2.82%  +1394.37%  +1416.13%  Sui oft vertreten
+UNIUSDT        DOWN    449  916    52%    +0.68%   +735.98%    +55.62%   +680.35%   +819.73% eher nicht bewährt
+FETUSDT        DOWN    449  916    49%    +0.61%   +493.34%    -42.71%   +536.04%   +581.95%
+AAVEUSDT       DOWN    449  916    53%    +0.51%   +426.01%   +100.59%   +325.42%   +476.74%
+NEARUSDT       DOWN    449  916    51%    +0.57%   +423.48%   +154.48%   +269.00%   +470.32%
+XRPUSDT        DOWN    449  916    50%    +0.48%   +382.06%   +306.99%    +75.07%    +99.59%
+PEPEUSDT       DOWN    435  916    49%    +0.69%   +378.29%    +42.78%   +335.50%   +453.05%
+HBARUSDT       DOWN    449  916    47%    +0.50%   +327.90%    +50.59%   +277.31%   +391.05%
+ICPUSDT        DOWN    449  916    50%    +0.46%   +277.49%    -41.00%   +318.49%   +363.81%
+SHIBUSDT       DOWN    449  916    54%    +0.40%   +265.05%    -44.97%   +310.02%   +337.35%
+QNTUSDT        DOWN    449  916    50%    +0.38%   +245.07%    +44.63%   +200.44%   +327.61%
+VETUSDT        DOWN    449  916    51%    +0.42%   +240.11%    -60.51%   +300.62%   +328.88%
+
+BNB down 24 (halbes Jahr)
+ONDOUSDT       DOWN       49(80)    57%    +2.59%   +213.68%   +114.94%    +98.75%   +151.56%
+WLDUSDT        DOWN       49(80)    63%    +2.19%   +153.26%    +56.17%    +97.09%    +89.05% konsistent gut (down)
+ICPUSDT        DOWN       49(80)    65%    +1.91%   +135.11%    +20.43%   +114.67%   +130.51%
+RENDERUSDT     DOWN       49(80)    63%    +1.66%   +110.01%    +32.09%    +77.91%   +122.13%
+MORPHOUSDT     DOWN       49(80)    47%    +1.52%    +92.70%    +36.91%    +55.78%    +82.21%
+ALGOUSDT       DOWN       49(80)    59%    +1.42%    +88.15%    +36.86%    +51.29%    +62.39%
+CRVUSDT        DOWN       49(80)    55%    +1.41%    +87.37%    +49.92%    +37.45%    +52.10%
+
+ÜBERSICHT DOWN | Hold=120h
+====================================================================================================
+Coin           Dir             n   %pos     Ø ROI   Compound   Buy&Hold      vs BH
+----------------------------------------------------------------------------------
+VIRTUALUSDT    DOWN      35(641)    54%    +5.12%   +153.14%    +31.35%   +121.79%
+VIRTUAL        interessant
+
+und paar mehr
+
+
+TRX UP 96h   TRX scheint eher keine starken Korrelationen zu haben (zumindest vor 2025)
+VIRTUALUSDT    UP       24  212    79%    +8.56%   +384.72%    +53.45%   +331.27%   +290.77%
+XRPUSDT        UP       55  212    56%    +3.32%   +340.04%   +154.00%   +186.04%   +330.93%
+CRVUSDT        UP       55  212    58%    +3.54%   +310.48%    +32.58%   +277.90%   +284.74%
+XLMUSDT        UP       55  212    51%    +3.68%   +265.88%   +114.09%   +151.79%   +251.61%
+WLDUSDT        UP       55  212    56%    +3.75%   +242.56%    -75.18%   +317.74%   +317.11%
+HBARUSDT       UP       55  212    53%    +2.95%   +223.04%    +37.14%   +185.90%   +264.48%
+RENDERUSDT     UP       55  212    60%    +2.73%   +206.85%    -68.67%   +275.51%   +249.89%
+ALGOUSDT       UP       55  212    56%    +2.86%   +199.46%    -18.08%   +217.54%   +206.80%
+ENAUSDT        UP       55  212    55%    +3.26%   +186.45%    -39.91%   +226.37%   +242.68%
+RAYUSDT        UP       55  212    53%    +2.57%   +159.34%    -12.32%   +171.66%   +192.69%
+ZROUSDT        UP       55  212    49%    +2.37%   +125.02%    -62.76%   +187.78%   +170.17%
+XPLUSDT        UP       10  212    70%    +9.78%   +110.51%    -85.43%   +195.94% 
+
+TRX up 24h (9 months)
+SEIUSDT        UP       141(308)    52%    +1.54%   +435.42%    -56.67%   +492.10%   +485.20% Sei evtl ein Kandidat
+HBARUSDT       UP       164(308)    50%    +1.06%   +292.81%    +51.22%   +241.59%   +341.56%
+XLMUSDT        UP       164(308)    49%    +0.99%   +260.85%   +151.54%   +109.31%   +247.73%
+PEPEUSDT       UP       156(308)    56%    +1.12%   +255.34%    +42.78%   +212.56%   +264.85%
+AAVEUSDT       UP       164(308)    53%    +0.85%   +206.91%    +98.25%   +108.66%   +255.57%
+INJUSDT        UP       164(308)    57%    +0.77%   +158.18%    +69.19%    +89.00%   +192.51%
+ENAUSDT        UP       112(308)    56%    +1.17%   +142.80%    -54.66%   +197.46%   +213.84%
+CRVUSDT        UP       164(308)    57%    +0.75%   +142.60%    -62.98%   +205.59%   +136.63%
+DASHUSDT       UP       164(308)    50%    +0.69%   +141.76%    +24.96%   +116.80%   +157.07%
+FETUSDT        UP       164(308)    54%    +0.73%   +137.92%    -43.04%   +180.96%   +214.19%
+ALGOUSDT       UP       164(308)    57%    +0.68%   +133.28%    -45.37%   +178.65%   +135.95%
+
+TRX up 48h (9months) 
+XLMUSDT        UP       126(308)    52%    +1.93%   +550.46%   +151.54%   +398.92%   +349.57%
+HBARUSDT       UP       126(308)    54%    +1.78%   +496.71%    +51.22%   +445.48%   +461.28%
+SEIUSDT        UP       108(308)    51%    +2.08%   +386.91%    -56.67%   +443.59%    +23.91%
+SUIUSDT        UP       120(308)    54%    +1.62%   +356.31%     -0.93%   +357.24%   +235.85%
+
+TRX up 96h (9months)
+VIRTUALUSDT    UP        24(308)    79%    +8.56%   +384.72%    +53.53%   +331.19%   +375.31%
+SEIUSDT        UP        81(308)    57%    +3.09%   +375.40%    -56.67%   +432.08%   +458.42%
+SUIUSDT        UP        92(308)    60%    +2.29%   +282.48%     -0.93%   +283.41%   +171.82%
+SOLUSDT        UP        96(308)    55%    +1.74%   +263.46%   +502.23%   -238.78%    +97.58%
+HBARUSDT       UP        96(308)    52%    +1.96%   +258.40%    +51.22%   +207.18%   +270.98%
+ALGOUSDT       UP        96(308)    56%    +2.00%   +244.99%    -45.37%   +290.36%   +248.91%
+RENDERUSDT     UP        56(308)    59%    +2.62%   +197.35%    -68.70%   +266.04%   +247.97%
+WLDUSDT        UP        84(308)    54%    +2.38%   +141.66%    -76.81%   +218.46%    +83.04%
+
+
+BCASH down 12h:
+ALGOUSDT       DOWN    599 1101    51%    +0.34%   +357.41%    -16.18%   +373.59%   +428.51%
+HBARUSDT       DOWN    599 1101    49%    +0.34%   +315.00%    +39.54%   +275.47%   +399.38%
+CRVUSDT        DOWN    599 1101    49%    +0.29%   +182.71%    +33.25%   +149.46%   +264.33%
+RAYUSDT        DOWN    599 1101    47%    +0.29%   +177.60%    -11.80%   +189.39%   +260.32%
+
+BCASH down 24h!
+VIRTUALUSDT    DOWN    269 1102    51%    +1.24%  +1182.22%    +53.27%  +1128.96%  +1115.60%
+ENAUSDT        DOWN    422 1102    50%    +0.62%   +366.81%    -39.89%   +406.70%   +447.99%
+CRVUSDT        DOWN    422 1102    50%    +0.53%   +320.68%    +32.43%   +288.24%   +200.08%
+ALGOUSDT       DOWN    422 1102    49%    +0.45%   +281.32%    -17.66%   +298.98%   +327.35%
+UNIUSDT        DOWN    422 1102    50%    +0.48%   +265.35%    +26.27%   +239.08%   +318.13%
+RENDERUSDT     DOWN    422 1102    51%    +0.44%   +243.90%    -68.56%   +312.46%   +314.67%
+WLDUSDT        DOWN    422 1102    47%    +0.50%   +223.52%    -75.15%   +298.67%   +310.68%
+ZROUSDT        DOWN    422 1102    50%    +0.43%   +197.07%    -62.78%   +259.85%   +229.66%
+JUPUSDT        DOWN    422 1102    50%    +0.39%   +166.14%    -70.59%   +236.73%   +237.73%
+
+BCH down 24h (auf 290 Tage) bestätigt zunächst Trend
+JUPUSDT        DOWN    141  334    57%    +1.22%   +361.27%    +58.35%   +302.92%   +387.90%
+RENDERUSDT     DOWN    141  334    57%    +1.05%   +272.97%    +27.08%   +245.89%   +284.65%
+ZROUSDT        DOWN    141  334    54%    +1.03%   +247.56%    +14.45%   +233.10%   +289.36%
+NEARUSDT       DOWN    141  334    54%    +1.02%   +245.59%   +216.19%    +29.40%   +231.15%
+VIRTUALUSDT    DOWN    141  334    52%    +1.00%   +231.49%     -0.17%   +231.66%   +265.34%
+
+BCH down 24h über 4 Jahre
+FETUSDT        DOWN    684 1803    48%    +0.58%  +1199.28%    -42.71%  +1241.98%  +1288.04%
+VIRTUALUSDT    DOWN    269 1803    51%    +1.24%  +1182.22%    +51.46%  +1130.77%  +1237.61%
+RAYUSDT        DOWN    684 1803    50%    +0.61%  +1178.16%   +767.63%   +410.53%  +1253.55%
+PEPEUSDT       DOWN    667 1803    50%    +0.60%   +848.84%    +42.78%   +806.06%   +926.05%
+WLDUSDT        DOWN    629 1803    47%    +0.55%   +500.28%    -76.93%   +577.22%   +597.62%
+UNIUSDT        DOWN    684 1803    49%    +0.36%   +332.67%    +55.64%   +277.03%   +403.84%
+SHIBUSDT       DOWN    684 1803    49%    +0.32%   +311.98%    -45.06%   +357.04%   +393.30%
+JUPUSDT        DOWN    527 1803    51%    +0.44%   +273.61%    -51.05%   +324.66%   +308.93%
+
+BCH down 12h von 2024 bis 2025
+HBARUSDT       DOWN     310(595)    50%    +0.77%   +576.05%   +333.23%   +242.82%   +609.55%
+ALGOUSDT       DOWN     310(595)    53%    +0.67%   +438.91%    +68.72%   +370.20%   +488.05%
+CRVUSDT        DOWN     310(595)    51%    +0.52%   +234.39%   +149.54%    +84.86%   +219.12%
+
+ADA up 24h (nicht mehr als 24)
+QNTUSDT        UP      483 1515    47%    +0.43%   +315.29%   +132.63%   +182.66%   +379.30%
+CRVUSDT        UP      483 1515    50%    +0.44%   +264.55%    +33.21%   +231.34%   +293.31%
+XLMUSDT        UP      483 1515    48%    +0.40%   +231.38%   +115.72%   +115.66%   +278.47%
+HBARUSDT       UP      483 1515    47%    +0.38%   +183.40%    +39.46%   +143.94%   +147.42%
+
+ADA up 24h (3 Jahre)
+RAYUSDT        UP      735 2200    48%    +0.70%  +2210.40%   +767.63%  +1442.78%  +2268.79%
+HBARUSDT       UP      735 2200    49%    +0.38%   +453.26%    +50.67%   +402.59%   +536.67%
+
+ADA 48h
+RAYUSDT        UP      462 2196    45%    +0.78%   +318.27%   +767.63%   -449.35%   +128.80%
+
+ADA 96h
+RAYUSDT        UP      266 2191    55%    +2.25%  +3152.69%   +767.63%  +2385.06%  +3099.64%
+
+Link down 12h
+CRVUSDT        DOWN    700 1422    49%    +0.29%   +230.89%    +33.99%   +196.90%   +311.50%
+RAYUSDT        DOWN    700 1422    48%    +0.27%   +190.74%    -11.53%   +202.27%   +277.15%
+
+Nexo up 24h
+AAVEUSDT       UP      384  966    52%    +0.58%   +438.60%    +51.76%   +386.84%   +480.68% seems to work in other scen too
+ALGOUSDT       UP      384  966    50%    +0.42%   +190.15%    -15.91%   +206.06%   +275.38%  not so much
+RAYUSDT        UP      384  966    52%    +0.44%   +164.59%    -13.92%   +178.52%   +227.74%  not so much
+ZROUSDT        UP      384  966    52%    +0.42%   +119.74%    -62.48%   +182.22%    +94.18%  this also, very good
+
+XLM: up 48h
+HBARUSDT       UP      270 1337    48%    +0.87%   +338.00%    +39.05%   +298.96%   +416.78% (hat sich nicht bestätigt)
+
+XLM down 12h
+CRVUSDT        DOWN    654 1399    50%    +0.44%   +660.17%    +35.46%   +624.71%   +732.42% (hat sich nicht bestätigt)
+
+Order Flow:
+COIN XLMUSDT | BOTH | ETF net flow |≥| 500M USD @ 20:00 UTC | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 34 Trades
+Buy&Hold über Zeitraum: 2025-05-24 13:05:00 UTC → 2026-09-26 13:00:00 UTC | ROI -24.43%
+   48h: n=31/34 (used/raw)  %pos=   32%  Ø=+0.79%  Compound=+11.27%
+   96h: n=29/34 (used/raw)  %pos=   62%  Ø=+3.40%  Compound=+114.28%
+  192h: n=22/33 (used/raw)  %pos=   45%  Ø=+3.07%  Compound=+58.86%
+ LTC? ENA
