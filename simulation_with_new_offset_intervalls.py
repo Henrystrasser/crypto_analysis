@@ -1,5 +1,28 @@
+from zoneinfo import ZoneInfo
+
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+    DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+    None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+    das erste Auftreten (CEST). Dauern danach = echte Stunden.
+    """
+    naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -92,7 +115,11 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
     dates = df["date"].unique()
 
     for d in dates:
-        current_dt = pd.to_datetime(d) + pd.Timedelta(hours=offset_hours)
+        # Kauf = Berliner Ortszeit offset_hours:00 am Berliner Tag d (DST siehe
+        # berlin_wallclock); Verkauf = Kauf + interval_hours echte Stunden.
+        current_dt = berlin_wallclock(d, offset_hours)
+        if current_dt is None:
+            continue
         target_sell_dt = current_dt + pd.Timedelta(hours=interval_hours)
 
         if current_dt in df.index and target_sell_dt in df.index:
@@ -101,10 +128,10 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
 
             results.append({
                 "Date_Buy": current_dt.strftime("%Y-%m-%d"),
-                "Time_Buy": current_dt.strftime("%H:%M"),
+                "Time_Buy": current_dt.strftime("%H:%M %Z"),
                 "Price_Buy": price_buy,
                 "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
-                "Time_Sell": target_sell_dt.strftime("%H:%M"),
+                "Time_Sell": target_sell_dt.strftime("%H:%M %Z"),
                 "Price_Sell": price_sell,
             })
 
@@ -163,7 +190,7 @@ def main():
     intervals_to_test = list(range(1, 24))
 
     since_timestamp = (
-        int(pd.Timestamp(start_date_str).timestamp() * 1000)
+        int(pd.Timestamp(start_date_str).tz_localize(BERLIN).timestamp() * 1000)
         - 48 * 60 * 60 * 1000
     )
 
@@ -173,9 +200,13 @@ def main():
     df = pd.DataFrame(
         ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
     )
-    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+    # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+    df["datetime"] = pd.to_datetime(
+        df["timestamp"], unit="ms", utc=True
+    ).dt.tz_convert(BERLIN)
     df.set_index("datetime", inplace=True)
     df = df[~df.index.duplicated(keep="first")]
+    # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
     df["date"] = df.index.date
 
     pd.set_option("display.float_format", lambda x: "%.2f" % x)
@@ -184,7 +215,7 @@ def main():
 
     if COMPARE_OFFSETS:
         print("\n==========================================")
-        print(f" OFFSET-VERGLEICH  (Intervall fest: {interval_hours}h)")
+        print(f" OFFSET-VERGLEICH  (Intervall fest: {interval_hours}h, Uhrzeiten Europe/Berlin)")
         print("==========================================")
         comparison_results = []
 

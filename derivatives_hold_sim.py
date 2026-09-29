@@ -24,6 +24,10 @@ Datenquellen:
 Coin-ROI weiterhin auf Spot-5m-Kerzen (laggard_common), Non-Overlap wie v0.7.
 Liquidationen: bewusst weggelassen (Endpunkt instabil / geo-sensitiv).
 
+Zeitzone: Events sind absolute Zeitstempel (Funding-/OI-Zeitpunkte); die
+Vision-Archive sind nach UTC-Monaten/-Tagen benannt und bleiben UTC (externe
+Daten). Nur die ANZEIGE aller Zeiten ist deutsche Zeit (Europe/Berlin, CET/CEST).
+
 Keine Handelsempfehlung — Backtest-Skript.
 """
 
@@ -184,6 +188,7 @@ def fetch_funding_vision(symbol: str, start_ms: int, end_ms: int) -> Optional[pd
     except Exception as exc:  # noqa: BLE001
         print(f"   Vision Funding-Liste fehlgeschlagen: {exc}", flush=True)
         return None
+    # Archiv-Monate sind UTC-Monate (externe Daten) -> bewusst UTC.
     start_ym = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).strftime("%Y-%m")
     end_ym = datetime.fromtimestamp(end_ms / 1000, tz=timezone.utc).strftime("%Y-%m")
     # ein Monat Puffer vor start_ym
@@ -332,6 +337,7 @@ def fetch_oi_fapi(symbol: str, start_ms: int, end_ms: int, period: str = "1h") -
 
 def fetch_oi_vision(symbol: str, start_ms: int, end_ms: int) -> Optional[pd.DataFrame]:
     """Tägliche metrics-ZIPs → sum_open_interest (~15m)."""
+    # Archiv-Tage sind UTC-Tage (externe Daten) -> bewusst UTC.
     start_d = datetime.fromtimestamp(start_ms / 1000, tz=timezone.utc).date()
     end_d = datetime.fromtimestamp(end_ms / 1000, tz=timezone.utc).date()
     days = pd.date_range(start=start_d, end=end_d, freq="D")
@@ -460,7 +466,7 @@ def main() -> None:
     fetch_end_ms = lc.utc_ms(fetch_end)
 
     print(
-        f"Zeitraum: {start.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} UTC",
+        f"Zeitraum: {lc.fmt_berlin(start)} → {lc.fmt_berlin(end)} (Europe/Berlin)",
         flush=True,
     )
     print(f"MODE={MODE} | SYMBOL={FUTURES_SYMBOL} | DIRECTION={DIRECTION}", flush=True)
@@ -590,6 +596,7 @@ def main() -> None:
     print(
         "\nFertig. Event = BTC-Perp Funding/OI (exogen zu Alt-Spot).\n"
         "Entry = Funding-/OI-Timestamp; Spot-ROI danach gemessen.\n"
+        "Alle angezeigten Zeiten: deutsche Zeit (Europe/Berlin, CET/CEST).\n"
         "Häufige Events → Non-Overlap kritisch für ehrliche Compounds.\n"
         "Keine Handelsempfehlung.\n",
         flush=True,

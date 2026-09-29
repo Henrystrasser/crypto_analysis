@@ -13,6 +13,12 @@ Einstiegsuhrzeit (dokumentiert, fest):
   Default ENTRY_HOUR_UTC = 20  (≈ US Cash Close EST/EDT-nah; DST-neutraler
   Kompromiss 20:00 UTC). Holds laufen in Coin-5m-Kerzen ab dieser Bar.
 
+Zeitzone: Die Flow-Daten sind externe Tagesdaten (US-Handelstag, UTC-/US-
+  basiert). Deshalb bleiben Tageszuordnung und Einstieg bewusst in UTC
+  (ENTRY_HOUR_UTC, sonst Lookahead/Verschiebung gegenüber US-Close). Nur die
+  ANZEIGE aller Zeiten ist deutsche Zeit (Europe/Berlin, CET/CEST):
+  20:00 UTC = 22:00 CEST (Sommer) bzw. 21:00 CET (Winter).
+
 Datenquellen (Reihenfolge):
   1) Lokale CSV `etf_btc_spot_flows.csv` (Spalten: date, net_flow_usd;
      date = YYYY-MM-DD; net_flow_usd in USD, z.B. 5e8 für +500 Mio).
@@ -48,7 +54,7 @@ DIRECTION = "INFLOW"  # INFLOW | OUTFLOW | BOTH  (Default = nur >)
 FLOW_THRESHOLD_USD = 500_000_000.0  # ±500 Mio. USD
 USE_PERCENTILE_THRESHOLD = False
 PERCENTILE = 90.0  # nur wenn USE_PERCENTILE_THRESHOLD
-ENTRY_HOUR_UTC = 20
+ENTRY_HOUR_UTC = 20  # bewusst UTC (US-Flow-Tag); Anzeige in Berliner Zeit
 ALLOW_SYNTHETIC_FLOWS = False
 BTC_CONFIRM_FILTER = False  # optional, Default aus
 BTC_CONFIRM_PCT = 0.5  # |BTC 1d return| ≥ x% am Flow-Tag
@@ -73,6 +79,13 @@ CSV_SUMMARY = "etf_flow_hold_summary.csv"
 WRITE_CSV = False  # True → Trades/Summary-CSV schreiben (Platz!)
 
 FARSIDE_URL = "https://farside.co.uk/bitcoin-etf-flow-all-data/"
+
+
+def _entry_berlin_note() -> str:
+    """ENTRY_HOUR_UTC in deutscher Zeit (Sommer/Winter) — nur Anzeige."""
+    summer = lc.fmt_berlin(datetime(2026, 7, 1, ENTRY_HOUR_UTC, tzinfo=timezone.utc), "%H:%M %Z")
+    winter = lc.fmt_berlin(datetime(2026, 1, 15, ENTRY_HOUR_UTC, tzinfo=timezone.utc), "%H:%M %Z")
+    return f"= {summer} / {winter}"
 
 
 def _sync_common() -> Dict[str, int]:
@@ -224,6 +237,8 @@ def load_or_fetch_flows(start: datetime, end: datetime) -> pd.DataFrame:
                 "  • oder stelle Netz-Zugriff auf Farside sicher,\n"
                 "  • oder setze ALLOW_SYNTHETIC_FLOWS=True (nur Demo)."
             )
+    # start/end sind UTC-aware; Flow-Tage sind externe UTC-/US-Tage ->
+    # Filter bewusst über das UTC-Datum (nicht auf Berliner Tage umstellen).
     mask = (flows["date"] >= pd.Timestamp(start.date())) & (
         flows["date"] <= pd.Timestamp(end.date())
     )
@@ -255,8 +270,10 @@ def detect_flow_events(
     for _, row in flows.iterrows():
         v = float(row["net_flow_usd"])
         d = row["date"]
-        entry = lc.entry_ms_on_flow_day(d, ENTRY_HOUR_UTC)
-        day_start = lc.entry_ms_on_flow_day(d, 0)
+        # Externe Tagesdaten (US-Flow-Tag): Event-Zuordnung bleibt UTC,
+        # nur die Anzeige ist Berliner Zeit.
+        entry = lc.entry_ms_on_flow_day(d, ENTRY_HOUR_UTC, tz=timezone.utc)
+        day_start = lc.entry_ms_on_flow_day(d, 0, tz=timezone.utc)
 
         is_in = v >= thr
         is_out = v <= -thr
@@ -295,6 +312,7 @@ def optional_btc_confirm(
         print("   BTC-Confirm übersprungen (keine 1d-Daten)", flush=True)
         return events
     btc["ret"] = btc["close"].pct_change() * 100.0
+    # BTC-1d-Kerzen (Binance: UTC-Tage) passen zum UTC-Flow-Tag -> bewusst UTC.
     btc["day"] = pd.to_datetime(btc["open_time"], unit="ms", utc=True).dt.strftime(
         "%Y-%m-%d"
     )
@@ -329,11 +347,11 @@ def main() -> None:
     fetch_end_ms = lc.utc_ms(fetch_end)
 
     print(
-        f"Zeitraum: {start.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} UTC",
+        f"Zeitraum: {lc.fmt_berlin(start)} → {lc.fmt_berlin(end)} (Europe/Berlin)",
         flush=True,
     )
     print(
-        f"Entry: {ENTRY_HOUR_UTC}:00 UTC am Flow-Kalendertag | "
+        f"Entry: {ENTRY_HOUR_UTC}:00 UTC ({_entry_berlin_note()}) am Flow-Kalendertag | "
         f"Richtung={DIRECTION} | Schwelle=±{FLOW_THRESHOLD_USD/1e6:.0f} Mio USD",
         flush=True,
     )
@@ -424,7 +442,8 @@ def main() -> None:
         batch.append(("RANDOM", rand_trades, rand_by_h))
 
         trigger = (
-            f"ETF net flow |≥| {thr/1e6:.0f}M USD @ {ENTRY_HOUR_UTC}:00 UTC"
+            f"ETF net flow |≥| {thr/1e6:.0f}M USD @ {ENTRY_HOUR_UTC}:00 UTC "
+            f"({_entry_berlin_note()})"
         )
         for strategy, trades, by_h in batch:
             lc.print_coin_result(
@@ -463,7 +482,8 @@ def main() -> None:
 
     print(
         "\nFertig. Event = US Spot BTC ETF Tages-Nettoflow (exogen).\n"
-        f"Entry = erste 5m-Bar ≥ {ENTRY_HOUR_UTC}:00 UTC am Flow-Tag.\n"
+        f"Entry = erste 5m-Bar ≥ {ENTRY_HOUR_UTC}:00 UTC ({_entry_berlin_note()}) am Flow-Tag.\n"
+        "Alle angezeigten Zeiten: deutsche Zeit (Europe/Berlin, CET/CEST).\n"
         "vs Rand = Compound − RANDOM; vs BH = Compound − Buy&Hold.\n"
         "Keine Handelsempfehlung — reine Simulation.\n",
         flush=True,

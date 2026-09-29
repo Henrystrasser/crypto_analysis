@@ -7,6 +7,11 @@ Skripte dieselbe Methodik nutzen (Horizonte, Fees, Non-Overlap, RANDOM, B&H).
 
 Enthält auch CLI-Helfer für Event-Zeitfenster (--from/--to oder --lookback).
 
+Zeit: alle angezeigten Uhrzeiten, FROM/TO-Datumsgrenzen und Wanduhr-Stunden sind
+deutsche Zeit (Europe/Berlin, Sommer-/Winterzeit automatisch, Ausgabe CET/CEST),
+konsistent mit simulation_offset_compute.py. Intern bleiben Zeitstempel echte
+Zeitpunkte (UTC-ms von Binance bzw. tz-aware datetimes).
+
 Keine Handelsempfehlung — reine Research-Backtests.
 """
 
@@ -22,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -129,9 +135,73 @@ def utc_ms(dt: datetime) -> int:
 
 
 def ms_to_utc_str(ms: int) -> str:
+    """Echte UTC-Darstellung (nur noch rückwärtskompatibel; Anzeige: ms_to_berlin_str)."""
     return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S UTC"
     )
+
+
+# ---------------------------------------------------------------------------
+# Deutsche Zeit (Europe/Berlin) — gleiche Regeln wie simulation_offset_compute.py
+# ---------------------------------------------------------------------------
+
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def to_berlin(x):
+    """
+    -> tz-aware Europe/Berlin.
+
+    Akzeptiert UTC-ms (int/float, numerische Series/Index), tz-aware oder naive
+    datetime/Timestamp/Series/DatetimeIndex. Naive Werte gelten als UTC (so
+    liefern ccxt/Binance sie).
+    """
+    if isinstance(x, (pd.Series, pd.Index)):
+        if pd.api.types.is_numeric_dtype(x.dtype):
+            conv = pd.to_datetime(x, unit="ms", utc=True)
+        else:
+            conv = pd.to_datetime(x, utc=True)
+        if isinstance(conv, pd.Series):
+            return conv.dt.tz_convert(BERLIN)
+        return conv.tz_convert(BERLIN)
+    if isinstance(x, (int, float, np.integer, np.floating)) and not isinstance(x, bool):
+        return pd.Timestamp(int(x), unit="ms", tz="UTC").tz_convert(BERLIN)
+    ts = pd.Timestamp(x)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    return ts.tz_convert(BERLIN)
+
+
+def berlin_wallclock(day, hour: int):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+
+    DST-Regeln wie simulation_offset_compute.berlin_wallclock:
+      - Frühjahr (23h-Tag): 02:00 existiert nicht -> None (kein Trade/Einstieg
+        für diese Stunde an diesem Tag; bewusst KEIN Verschieben auf 03:00).
+      - Herbst (25h-Tag): 02:00 gibt es zweimal -> nur das ERSTE Auftreten
+        (CEST) zählt.
+    Dauern danach (Hold-Fenster) mit tz-aware Timestamps = echte Stunden.
+    """
+    d = pd.Timestamp(day)
+    if d.tzinfo is not None:
+        d = d.tz_localize(None)  # Berliner Wanduhr-Datum behalten
+    naive = d.normalize() + pd.Timedelta(hours=int(hour))
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
+
+
+def ms_to_berlin_str(ms: int, fmt: str = "%Y-%m-%d %H:%M:%S %Z") -> str:
+    """UTC-ms -> 'YYYY-MM-DD HH:MM:SS CET|CEST' (Europe/Berlin)."""
+    return datetime.fromtimestamp(ms / 1000, tz=BERLIN).strftime(fmt)
+
+
+def fmt_berlin(dt, fmt: str = "%Y-%m-%d %H:%M %Z") -> str:
+    """datetime/Timestamp (aware; naive = UTC) oder UTC-ms -> Berlin-String."""
+    return to_berlin(dt).strftime(fmt)
 
 
 # ---------------------------------------------------------------------------
@@ -149,9 +219,10 @@ _DATE_TIME_FMTS = (
 )
 
 
-def parse_utc_date(s: str, *, end_of_day: bool = False) -> datetime:
+def parse_local_date(s: str, *, end_of_day: bool = False, tz=None) -> datetime:
     """
-    Parse a UTC date/datetime string.
+    Parse a date/datetime string as wall-clock time in `tz`
+    (Default None = Europe/Berlin).
 
     Accepted formats:
       YYYY-MM-DD
@@ -159,11 +230,16 @@ def parse_utc_date(s: str, *, end_of_day: bool = False) -> datetime:
       YYYY-MM-DDTHH:MM:SS[.fff]  /  YYYY-MM-DD HH:MM:SS[.fff]
 
     Date-only:
-      --from: 00:00:00.000 UTC on that day
-      --to (end_of_day=True): 23:59:59.999 UTC on that day (inclusive calendar day)
+      --from: 00:00:00.000 (Berlin) on that day
+      --to (end_of_day=True): 23:59:59.999 (Berlin) on that day (inclusive calendar day)
 
-    Datetime with time: used as-is (UTC); end_of_day is ignored.
+    Datetime with time: used as-is (Berliner Wanduhrzeit); end_of_day is ignored.
+    DST (zoneinfo, fold=0): doppelte Herbst-Stunde 02:xx = erstes Auftreten
+    (CEST); nicht existierende Frühjahrs-Zeit 02:xx wird mit CET-Offset gelesen
+    (= 03:xx CEST). Mitternacht / 23:59 sind in Berlin nie betroffen.
     """
+    tz = BERLIN if tz is None else tz
+    tz_label = "Europe/Berlin" if tz is BERLIN else str(tz)
     raw = (s or "").strip()
     if not raw:
         raise SystemExit("Fehler: leeres Datumsargument.")
@@ -171,20 +247,30 @@ def parse_utc_date(s: str, *, end_of_day: bool = False) -> datetime:
     if _DATE_ONLY_RE.match(raw):
         y, m, d = (int(x) for x in raw.split("-"))
         if end_of_day:
-            return datetime(y, m, d, 23, 59, 59, 999000, tzinfo=timezone.utc)
-        return datetime(y, m, d, 0, 0, 0, 0, tzinfo=timezone.utc)
+            return datetime(y, m, d, 23, 59, 59, 999000, tzinfo=tz)
+        return datetime(y, m, d, 0, 0, 0, 0, tzinfo=tz)
 
     for fmt in _DATE_TIME_FMTS:
         try:
             dt = datetime.strptime(raw, fmt)
-            return dt.replace(tzinfo=timezone.utc)
+            return dt.replace(tzinfo=tz)
         except ValueError:
             continue
 
     raise SystemExit(
         f"Fehler: Ungültiges Datum {s!r}. Erwartet YYYY-MM-DD oder "
-        "YYYY-MM-DDTHH:MM / YYYY-MM-DD HH:MM (UTC)."
+        f"YYYY-MM-DDTHH:MM / YYYY-MM-DD HH:MM ({tz_label})."
     )
+
+
+def parse_berlin_date(s: str, *, end_of_day: bool = False) -> datetime:
+    """Datum/Zeit als deutsche Zeit (Europe/Berlin) -> tz-aware datetime."""
+    return parse_local_date(s, end_of_day=end_of_day, tz=BERLIN)
+
+
+def parse_utc_date(s: str, *, end_of_day: bool = False) -> datetime:
+    """Rückwärtskompatibel: Datum/Zeit als UTC (alte Semantik)."""
+    return parse_local_date(s, end_of_day=end_of_day, tz=timezone.utc)
 
 
 def resolve_event_window(
@@ -195,12 +281,13 @@ def resolve_event_window(
     default_lookback: int,
 ) -> Tuple[datetime, datetime, str]:
     """
-    Resolve (start, end, mode_label) for the event window (UTC).
+    Resolve (start, end, mode_label) for the event window
+    (tz-aware Europe/Berlin; FROM/TO-Daten = Berliner Kalendertage).
 
     Rules:
       - --to without --from → SystemExit (German)
       - --from and --lookback together → SystemExit
-      - --from set, --to omitted → end = now UTC
+      - --from set, --to omitted → end = now
       - neither --from nor --lookback → lookback = default_lookback, end = now
       - start must be < end
     """
@@ -216,29 +303,33 @@ def resolve_event_window(
         )
 
     if from_s:
-        start = parse_utc_date(from_s, end_of_day=False)
+        start = parse_berlin_date(from_s, end_of_day=False)
         if to_s:
-            end = parse_utc_date(to_s, end_of_day=True)
+            end = parse_berlin_date(to_s, end_of_day=True)
         else:
-            end = datetime.now(tz=timezone.utc)
+            end = datetime.now(tz=BERLIN)
         if start >= end:
             raise SystemExit(
-                f"Fehler: Start ({start.strftime('%Y-%m-%d %H:%M:%S')} UTC) "
-                f"muss vor Ende ({end.strftime('%Y-%m-%d %H:%M:%S')} UTC) liegen."
+                f"Fehler: Start ({start.strftime('%Y-%m-%d %H:%M:%S %Z')}) "
+                f"muss vor Ende ({end.strftime('%Y-%m-%d %H:%M:%S %Z')}) liegen."
             )
         label = (
-            f"Zeitraum: {start.strftime('%Y-%m-%d %H:%M')} → "
-            f"{end.strftime('%Y-%m-%d %H:%M')} UTC (CLI)"
+            f"Zeitraum: {start.strftime('%Y-%m-%d %H:%M %Z')} → "
+            f"{end.strftime('%Y-%m-%d %H:%M %Z')} (Europe/Berlin, CLI/Config)"
         )
-        return start, end, label
+        # pd.Timestamp: Arithmetik (z.B. end + Hold) ist echte Dauer, auch über DST
+        return pd.Timestamp(start), pd.Timestamp(end), label
 
     days = int(lookback_days) if lookback_days is not None else int(default_lookback)
     if days <= 0:
         raise SystemExit("Fehler: --lookback muss > 0 sein.")
-    end = datetime.now(tz=timezone.utc)
-    start = end - timedelta(days=days)
+    # Lookback = echte Dauer rückwärts ab jetzt (in UTC gerechnet, damit ein
+    # DST-Wechsel die Länge nicht verändert); Rückgabe in Berliner Zeit.
+    end_utc = datetime.now(tz=timezone.utc)
+    start = (end_utc - timedelta(days=days)).astimezone(BERLIN)
+    end = end_utc.astimezone(BERLIN)
     label = f"Lookback: {days} Tage"
-    return start, end, label
+    return pd.Timestamp(start), pd.Timestamp(end), label
 
 
 def add_time_range_arguments(parser: argparse.ArgumentParser) -> None:
@@ -250,8 +341,8 @@ def add_time_range_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         metavar="DATE",
         help=(
-            "Start des Event-Zeitraums (UTC). "
-            "Formate: YYYY-MM-DD (=00:00:00 UTC) oder "
+            "Start des Event-Zeitraums (deutsche Zeit, Europe/Berlin). "
+            "Formate: YYYY-MM-DD (=00:00:00 Berlin) oder "
             "YYYY-MM-DDTHH:MM / YYYY-MM-DD HH:MM. "
             "Nicht zusammen mit --lookback."
         ),
@@ -263,9 +354,9 @@ def add_time_range_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         metavar="DATE",
         help=(
-            "Ende des Event-Zeitraums (UTC). "
-            "Date-only = inklusiv bis 23:59:59.999 UTC an diesem Tag. "
-            "Default: jetzt (UTC), wenn --from gesetzt ist."
+            "Ende des Event-Zeitraums (deutsche Zeit, Europe/Berlin). "
+            "Date-only = inklusiv bis 23:59:59.999 Berlin an diesem Tag. "
+            "Default: jetzt, wenn --from gesetzt ist."
         ),
     )
     parser.add_argument(
@@ -274,7 +365,7 @@ def add_time_range_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         metavar="DAYS",
         help=(
-            "Lookback in Tagen bis jetzt (UTC). "
+            "Lookback in Tagen bis jetzt. "
             "Nicht zusammen mit --from/--to. "
             "Default: Config FROM_DATE/TO_DATE bzw. LOOKBACK_DAYS; CLI überschreibt Config FROM_DATE/TO_DATE bzw. LOOKBACK_DAYS."
         ),
@@ -285,12 +376,35 @@ def sleep_polite(seconds: float = 0.3) -> None:
     time.sleep(seconds)
 
 
-def entry_ms_on_flow_day(flow_date: pd.Timestamp, entry_hour_utc: int = 20) -> int:
-    """UTC-Zeitstempel ENTRY_HOUR_UTC am Flow-/Event-Kalendertag."""
-    d = pd.Timestamp(flow_date).tz_localize(None)
+def entry_ms_on_flow_day(
+    flow_date: pd.Timestamp,
+    entry_hour: int = 20,
+    *,
+    tz=None,
+    entry_hour_utc: Optional[int] = None,
+) -> Optional[int]:
+    """
+    Zeitstempel (UTC-ms) von `entry_hour`:00 am Flow-/Event-Kalendertag.
+
+    tz=None (Default): deutsche Zeit (Europe/Berlin), DST wie berlin_wallclock
+      (Frühjahr 02:00 -> None = kein Einstieg an dem Tag; Herbst 02:00 ->
+      erstes Auftreten, CEST).
+    tz=timezone.utc: Stunde als UTC — für externe Tagesdaten, deren
+      Kalendertag UTC-/US-basiert ist (z.B. ETF-Flows, siehe
+      etf_flow_hold_sim.py); dort bleibt die Event-Zuordnung bewusst UTC.
+    Rückwärtskompatibel: entry_hour_utc=H entspricht entry_hour=H, tz=UTC.
+    """
+    if entry_hour_utc is not None:
+        entry_hour, tz = entry_hour_utc, timezone.utc
+    d = pd.Timestamp(flow_date)
+    if d.tzinfo is not None:
+        d = d.tz_localize(None)
+    if tz is None or tz is BERLIN:
+        local = berlin_wallclock(d, entry_hour)
+        return None if local is None else utc_ms(local.to_pydatetime())
     dt = datetime(
         int(d.year), int(d.month), int(d.day),
-        int(entry_hour_utc), 0, 0, tzinfo=timezone.utc,
+        int(entry_hour), 0, 0, tzinfo=tz,
     )
     return utc_ms(dt)
 
@@ -390,6 +504,7 @@ def _write_universe_cache(n: int, raw_symbols: List[str]) -> None:
             json.dumps(
                 {
                     "source": "coingecko",
+                    # Maschinenlesbar bewusst UTC; Anzeige via _cache_stamp_berlin
                     "fetched_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "n": n,
                     "raw_symbols": raw_symbols,
@@ -400,6 +515,17 @@ def _write_universe_cache(n: int, raw_symbols: List[str]) -> None:
         tmp.replace(path)
     except OSError as exc:
         print(f"   (Cache nicht geschrieben: {exc})", flush=True)
+
+
+def _cache_stamp_berlin(raw: Optional[str]) -> str:
+    """'fetched_at_utc' (gespeichert als UTC) nur zur Anzeige in Berliner Zeit."""
+    if not raw:
+        return "?"
+    try:
+        dt = datetime.strptime(str(raw), "%Y-%m-%d %H:%M:%S UTC").replace(tzinfo=timezone.utc)
+    except ValueError:
+        return str(raw)
+    return dt.astimezone(BERLIN).strftime("%Y-%m-%d %H:%M:%S %Z")
 
 
 def _read_universe_cache(n: int) -> Optional[dict]:
@@ -568,7 +694,7 @@ def fetch_top_coins_robust(
         if out:
             print(
                 f"   Universum-Quelle: Cache ({_universe_cache_path(n)}, "
-                f"Stand {cached.get('fetched_at_utc', '?')}, {len(out)} Coins)",
+                f"Stand {_cache_stamp_berlin(cached.get('fetched_at_utc'))}, {len(out)} Coins)",
                 flush=True,
             )
             return out
@@ -742,8 +868,8 @@ def buy_and_hold_roi(
     buy, sell = apply_costs(entry_raw, exit_raw, fee_bps, slippage_bps)
     roi_pct = (sell / buy - 1.0) * 100.0
     return {
-        "bh_buy_time": ms_to_utc_str(int(sub.iloc[0]["open_time"])),
-        "bh_sell_time": ms_to_utc_str(int(sub.iloc[-1]["open_time"])),
+        "bh_buy_time": ms_to_berlin_str(int(sub.iloc[0]["open_time"])),
+        "bh_sell_time": ms_to_berlin_str(int(sub.iloc[-1]["open_time"])),
         "bh_buy_price": buy,
         "bh_sell_price": sell,
         "buy_hold_roi_pct": roi_pct,
@@ -821,10 +947,10 @@ def simulate_from_events(
             "coin": coin,
             "strategy": strategy_label,
             "direction": e.direction,
-            "event_start": ms_to_utc_str(e.start_ms),
-            "event_end": ms_to_utc_str(e.end_ms),
+            "event_start": ms_to_berlin_str(e.start_ms),
+            "event_end": ms_to_berlin_str(e.end_ms),
             value_col: e.value,
-            "buy_time": ms_to_utc_str(buy_time_ms),
+            "buy_time": ms_to_berlin_str(buy_time_ms),
             "buy_time_ms": buy_time_ms,
             "buy_price": entry_raw * (1.0 + (fee + slip) / 10_000.0),
         }
@@ -894,7 +1020,7 @@ def simulate_random(
             "event_start": "",
             "event_end": "",
             value_col: None,
-            "buy_time": ms_to_utc_str(t_ms),
+            "buy_time": ms_to_berlin_str(t_ms),
             "buy_time_ms": t_ms,
             "buy_price": entry_raw * (1.0 + (fee + slip) / 10_000.0),
         }
@@ -1040,14 +1166,14 @@ def print_coin_result(
 
     if show_trades and trades:
         header = (
-            f"{'Buy UTC':<22} {'Dir':<12} {value_header:>10}"
+            f"{'Buy (Berlin)':<24} {'Dir':<12} {value_header:>10}"
             + "".join(f"{('ROI ' + h):>9}" for h in names)
         )
         print(header)
         print("-" * len(header))
         for t in trades:
             line = (
-                f"{t['buy_time']:<22} {str(t['direction']):<12} "
+                f"{t['buy_time']:<24} {str(t['direction']):<12} "
                 f"{fmt_pct(t.get(value_col)) if isinstance(t.get(value_col), float) else str(t.get(value_col) or ''):>10}"
             )
             for h in names:

@@ -1,5 +1,28 @@
+from zoneinfo import ZoneInfo
+
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+    DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+    None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+    das erste Auftreten (CEST). Dauern danach = echte Stunden.
+    """
+    naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -33,12 +56,21 @@ def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
     return all_ohlcv
 
 
+def add_months(ts, months):
+    """Monatsarithmetik in UTC (wie bisher, DST-sicher); Ergebnis in Berlin."""
+    return (ts.tz_convert("UTC") + pd.DateOffset(months=months)).tz_convert(BERLIN)
+
+
 def generate_result_df(df, offset_hours, interval_hours, start_ts, end_ts):
     results = []
     dates = sorted(set(df.loc[start_ts:end_ts].index.date)) if not df.empty else []
 
     for d in dates:
-        buy_dt = pd.Timestamp(d, tz="UTC") + pd.Timedelta(hours=offset_hours)
+        # Kauf = Berliner Ortszeit offset_hours:00 am Berliner Tag d (DST siehe
+        # berlin_wallclock); Verkauf = Kauf + interval_hours echte Stunden.
+        buy_dt = berlin_wallclock(d, offset_hours)
+        if buy_dt is None:
+            continue
         sell_dt = buy_dt + pd.Timedelta(hours=interval_hours)
 
         if buy_dt < start_ts or buy_dt >= end_ts:
@@ -48,10 +80,10 @@ def generate_result_df(df, offset_hours, interval_hours, start_ts, end_ts):
 
         results.append({
             "Date_Buy": buy_dt.strftime("%Y-%m-%d"),
-            "Time_Buy": buy_dt.strftime("%H:%M"),
+            "Time_Buy": buy_dt.strftime("%H:%M %Z"),
             "Price_Buy": float(df.loc[buy_dt, "close"]),
             "Date_Sell": sell_dt.strftime("%Y-%m-%d"),
-            "Time_Sell": sell_dt.strftime("%H:%M"),
+            "Time_Sell": sell_dt.strftime("%H:%M %Z"),
             "Price_Sell": float(df.loc[sell_dt, "close"]),
         })
 
@@ -162,9 +194,10 @@ def main():
     TRADE_IF_NEGATIVE_OFFSET = True
 
     exchange = ccxt.binance()
-    now = pd.Timestamp.now(tz="UTC").floor("h")
-    trade_start = now - pd.DateOffset(months=sim_months)
-    data_start = trade_start - pd.DateOffset(months=lookback_months)
+    # "Jetzt" auf volle Stunde (in UTC gerundet, DST-sicher), dann Berlin
+    now = pd.Timestamp.now(tz="UTC").floor("h").tz_convert(BERLIN)
+    trade_start = add_months(now, -sim_months)
+    data_start = add_months(trade_start, -lookback_months)
     since_timestamp = int(data_start.timestamp() * 1000)
 
     print(f"Lade Daten für {symbol} ab {data_start.date()} ...")
@@ -173,7 +206,10 @@ def main():
     df = pd.DataFrame(
         ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
     )
-    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
+    # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+    df["datetime"] = pd.to_datetime(
+        df["timestamp"], unit="ms", utc=True
+    ).dt.tz_convert(BERLIN)
     df.set_index("datetime", inplace=True)
     df = df[~df.index.duplicated(keep="first")].sort_index()
 
@@ -188,6 +224,7 @@ def main():
     print(f"Handelszeitraum      : {trade_start.date()} bis {now.date()}")
     print(f"Fenster              : {lookback_months} Monate")
     print(f"Haltedauer           : {interval_hours} Stunden")
+    print("Zeitzone             : Europe/Berlin (Offsets = Berliner Stunde, CET/CEST)")
     print(f"Gebühr je Seite      : {fee_rate * 100:.3f} %")
     print(f"Offset-Wahl          : robust (Hochzone + 3h-Schnitt, ratio={KEEP_RATIO})")
     print(f"Negatives Offset     : {'handeln' if TRADE_IF_NEGATIVE_OFFSET else 'aussetzen'}")
@@ -195,8 +232,8 @@ def main():
     print("==========================================\n")
 
     while window_start < now:
-        window_end = min(window_start + pd.DateOffset(months=lookback_months), now)
-        train_start = window_start - pd.DateOffset(months=lookback_months)
+        window_end = min(add_months(window_start, lookback_months), now)
+        train_start = add_months(window_start, -lookback_months)
         train_end = window_start
 
         best = find_best_offset(

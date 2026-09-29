@@ -1,6 +1,28 @@
+from zoneinfo import ZoneInfo
 import time
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+    DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+    None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+    das erste Auftreten (CEST). Dauern danach = echte Stunden.
+    """
+    naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -37,7 +59,11 @@ def pattern_rate_for_offset(df, offset_hours, interval_hours=12):
     dates = sorted(df["date"].unique())
 
     for d in dates:
-        buy_dt = pd.Timestamp(d) + pd.Timedelta(hours=offset_hours)
+        # Kauf = Berliner Ortszeit offset_hours:00 am Berliner Tag d (DST siehe
+        # berlin_wallclock); Verkauf = Kauf + interval_hours echte Stunden.
+        buy_dt = berlin_wallclock(d, offset_hours)
+        if buy_dt is None:
+            continue
         sell_dt = buy_dt + pd.Timedelta(hours=interval_hours)
         if buy_dt not in df.index or sell_dt not in df.index:
             continue
@@ -100,6 +126,7 @@ def main():
     print("  gestern Anstieg → heute Morgen < gestern Abend")
     print("  gestern Abstieg → heute Morgen > gestern Abend")
     print("Fenster: Kauf = Offset, Verkauf = Offset + 12h (auch über Mitternacht)")
+    print("Offsets/Uhrzeiten = deutsche Zeit (Europe/Berlin, CET/CEST)")
     print(f"Tage: {days}  |  Offsets: 0–23\n")
 
     summary_rows = []
@@ -120,9 +147,13 @@ def main():
         df = pd.DataFrame(
             ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
         )
-        df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+        # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+        df["datetime"] = pd.to_datetime(
+            df["timestamp"], unit="ms", utc=True
+        ).dt.tz_convert(BERLIN)
         df.set_index("datetime", inplace=True)
         df = df[~df.index.duplicated(keep="first")]
+        # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
         df["date"] = df.index.date
 
         rates = {}

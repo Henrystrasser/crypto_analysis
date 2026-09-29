@@ -1,5 +1,28 @@
+from zoneinfo import ZoneInfo
+
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+    DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+    None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+    das erste Auftreten (CEST). Dauern danach = echte Stunden.
+    """
+    naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -37,7 +60,10 @@ def build_day_table(df, offset_hours, interval_hours):
     rows = []
 
     for date, group in df.groupby("date"):
-        hour_data = group[group.index.hour.isin([morning_hour, evening_hour])]
+        # Berliner Wanduhr-Stunden dieses Berliner Tages (DST: Frühjahr 02:00
+        # fehlt -> Tag übersprungen; Herbst 02:00 doppelt -> nur erstes Auftreten)
+        wanted = [berlin_wallclock(date, h) for h in dict.fromkeys([morning_hour, evening_hour])]
+        hour_data = group.loc[[x for x in wanted if x is not None and x in group.index]]
         if len(hour_data) < 2:
             continue
 
@@ -49,9 +75,9 @@ def build_day_table(df, offset_hours, interval_hours):
 
         rows.append({
             "Date": date,
-            "Time_Morning": t1.strftime("%H:%M"),
+            "Time_Morning": t1.strftime("%H:%M %Z"),
             "Price_Morning": price_morning,
-            "Time_Evening": t2.strftime("%H:%M"),
+            "Time_Evening": t2.strftime("%H:%M %Z"),
             "Price_Evening": price_evening,
             "Day_Change_%": (price_evening / price_morning - 1.0) * 100.0,
             "Up_Day": price_evening > price_morning,
@@ -197,9 +223,13 @@ def main():
     df = pd.DataFrame(
         ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
     )
-    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+    # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+    df["datetime"] = pd.to_datetime(
+        df["timestamp"], unit="ms", utc=True
+    ).dt.tz_convert(BERLIN)
     df.set_index("datetime", inplace=True)
     df = df[~df.index.duplicated(keep="first")]
+    # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
     df["date"] = df.index.date
 
     day_df, morning_hour, evening_hour = build_day_table(
@@ -230,7 +260,7 @@ def main():
     print("==========================================")
     print(f"Coin            : {symbol}")
     print(f"Zeitraum        : letzte {days} Tage")
-    print(f"Morgen / Abend  : {morning_hour:02d}:00 / {evening_hour:02d}:00  (UTC)")
+    print(f"Morgen / Abend  : {morning_hour:02d}:00 / {evening_hour:02d}:00  (Europe/Berlin, CET/CEST)")
     print("Long            : Abstiegstag Abend kaufen, Morgen verkaufen")
     print("Short           : Anstiegstag Abend shorten, Morgen closen")
     print(f"Long aktiv      : {TRADE_LONG}")

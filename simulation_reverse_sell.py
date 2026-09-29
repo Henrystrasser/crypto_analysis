@@ -1,5 +1,28 @@
+from zoneinfo import ZoneInfo
+
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+  """
+  Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+  Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+  DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+  None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+  das erste Auftreten (CEST). Dauern danach = echte Stunden.
+  """
+  naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+  local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+  if pd.isna(local):
+    return None
+  return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -121,7 +144,7 @@ def main():
 
   # Start-Timestamp für den API-Abruf berechnen
   since_timestamp = (
-      int(pd.Timestamp(start_date_str).timestamp() * 1000)
+      int(pd.Timestamp(start_date_str).tz_localize(BERLIN).timestamp() * 1000)
       - 48 * 60 * 60 * 1000
   )
 
@@ -134,24 +157,31 @@ def main():
   df = pd.DataFrame(
       ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
   )
-  df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+  # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+  df["datetime"] = pd.to_datetime(
+      df["timestamp"], unit="ms", utc=True
+  ).dt.tz_convert(BERLIN)
   df.set_index("datetime", inplace=True)
   df = df[~df.index.duplicated(keep="first")]
+  # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
   df["date"] = df.index.date
 
   results = []
   for date, group in df.groupby("date"):
     t1 = offset_hours % 24
     t2 = (offset_hours + interval_hours) % 24
-    hour_data = group[group.index.hour.isin([t1, t2])]
+    # Berliner Wanduhr-Stunden dieses Berliner Tages (DST: Frühjahr 02:00
+    # fehlt -> Tag übersprungen; Herbst 02:00 doppelt -> nur erstes Auftreten)
+    wanted = [berlin_wallclock(date, h) for h in dict.fromkeys([t1, t2])]
+    hour_data = group.loc[[x for x in wanted if x is not None and x in group.index]]
 
     if len(hour_data) >= 2:
       hour_data = hour_data.sort_index()
       results.append({
           "Date": date,
-          "Time_1": hour_data.index[0].strftime("%H:%M"),
+          "Time_1": hour_data.index[0].strftime("%H:%M %Z"),
           "Price_1": hour_data.iloc[0]["close"],
-          "Time_2": hour_data.index[1].strftime("%H:%M"),
+          "Time_2": hour_data.index[1].strftime("%H:%M %Z"),
           "Price_2": hour_data.iloc[1]["close"],
       })
 
@@ -177,7 +207,7 @@ def main():
   initial_capital = 10000.0
 
   print(
-      f"\n--- SIMULATION STARTET (Kauf morgens, Verkauf abends) ---"
+      f"\n--- SIMULATION STARTET (Kauf morgens, Verkauf abends; Europe/Berlin) ---"
       f" ({start_date_str} bis {end_date_str})"
   )
   print(f"Startkapital: {initial_capital:,.2f} USDT")

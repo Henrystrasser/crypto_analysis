@@ -35,6 +35,8 @@ Metriken je Horizont: % positiv, Ø ROI, Compound; vs RANDOM; vs Buy&Hold
 
 RUN_RANDOM steuert die optionale RANDOM-Baseline (Config; CLI --no-random).
 
+Alle Uhrzeiten/Datumsgrenzen: deutsche Zeit (Europe/Berlin, CET/CEST).
+
 Keine Handelsempfehlung — Backtest-Skript.
 Abhängigkeiten: pip install -r requirements.txt
 """
@@ -51,6 +53,7 @@ from typing import Dict, List, Optional, Tuple
 from laggard_common import (
     add_time_range_arguments,
     fetch_top_coins_robust,
+    ms_to_berlin_str,
     resolve_event_window,
 )
 
@@ -88,10 +91,10 @@ HOLD_HORIZONS: Dict[str, int] = {
     "192h": 11520, # 8 Tage
 }
 
-# --- Zeitraum (UTC) — hier in VS Code ändern ---
+# --- Zeitraum (deutsche Zeit, Europe/Berlin inkl. Sommer-/Winterzeit) — hier in VS Code ändern ---
 # Wenn FROM_DATE gesetzt: fester Zeitraum nutzen.
-#   TO_DATE=None → Ende = jetzt (UTC).
-#   Date-only: FROM = 00:00:00 UTC, TO = inklusiv bis 23:59:59.999 UTC.
+#   TO_DATE=None → Ende = jetzt.
+#   Date-only: FROM = 00:00:00 Berlin, TO = inklusiv bis 23:59:59.999 Berlin.
 # Wenn FROM_DATE=None: LOOKBACK_DAYS rückwärts ab jetzt.
 # FROM_DATE und LOOKBACK_DAYS nicht gleichzeitig "aktiv" (FROM hat Vorrang).
 FROM_DATE: Optional[str] = "2025-03-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
@@ -204,10 +207,9 @@ def utc_ms(dt: datetime) -> int:
     return int(dt.timestamp() * 1000)
 
 
-def ms_to_utc_str(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S UTC"
-    )
+# Anzeige aller Zeiten in deutscher Zeit (Europe/Berlin, CET/CEST) über
+# laggard_common.ms_to_berlin_str. Die Event-Erkennung (±X% im rollierenden
+# Fenster) arbeitet auf absoluten Zeitstempeln und ist zeitzonenunabhängig.
 
 
 def sleep_polite(seconds: float = 0.3) -> None:
@@ -419,8 +421,8 @@ def buy_and_hold_roi(
     buy, sell = apply_costs(entry_raw, exit_raw)
     roi_pct = (sell / buy - 1.0) * 100.0
     return {
-        "bh_buy_time": ms_to_utc_str(int(sub.iloc[0]["open_time"])),
-        "bh_sell_time": ms_to_utc_str(int(sub.iloc[-1]["open_time"])),
+        "bh_buy_time": ms_to_berlin_str(int(sub.iloc[0]["open_time"])),
+        "bh_sell_time": ms_to_berlin_str(int(sub.iloc[-1]["open_time"])),
         "bh_buy_price": buy,
         "bh_sell_price": sell,
         "buy_hold_roi_pct": roi_pct,
@@ -461,10 +463,10 @@ def simulate_coin(
         row: dict = {
             "coin": coin,
             "direction": e.direction,
-            "btc_rise_start": ms_to_utc_str(e.start_ms),
-            "btc_rise_end": ms_to_utc_str(e.end_ms),
+            "btc_rise_start": ms_to_berlin_str(e.start_ms),
+            "btc_rise_end": ms_to_berlin_str(e.end_ms),
             "btc_move_pct": e.btc_move_pct,
-            "buy_time": ms_to_utc_str(buy_time_ms),
+            "buy_time": ms_to_berlin_str(buy_time_ms),
             "buy_time_ms": buy_time_ms,
             "buy_price": entry_raw * (1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0),
         }
@@ -590,7 +592,7 @@ def simulate_random_matched_horizons(
                 "btc_rise_start": "",
                 "btc_rise_end": "",
                 "btc_move_pct": None,
-                "buy_time": ms_to_utc_str(t_ms),
+                "buy_time": ms_to_berlin_str(t_ms),
                 "buy_time_ms": t_ms,
                 "buy_price": entry_raw * (1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0),
                 "random_horizon": name,
@@ -650,7 +652,7 @@ def simulate_random_coin(
             "btc_rise_start": "",
             "btc_rise_end": "",
             "btc_move_pct": None,
-            "buy_time": ms_to_utc_str(t_ms),
+            "buy_time": ms_to_berlin_str(t_ms),
             "buy_time_ms": t_ms,
             "buy_price": entry_raw * (1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0),
         }
@@ -793,21 +795,21 @@ def print_coin_result(
 
     if SHOW_TRADES and trades:
         header = (
-            f"{'Buy UTC':<22} {'Ref%':>7}"
+            f"{'Buy (Berlin)':<24} {'Ref%':>7}"
             + "".join(f"{('ROI ' + h):>9}" for h in HORIZON_NAMES)
         )
         print(header)
         print("-" * len(header))
         for t in trades:
-            line = f"{t['buy_time']:<22} {fmt_pct(t['btc_move_pct']):>7}"
+            line = f"{t['buy_time']:<24} {fmt_pct(t['btc_move_pct']):>7}"
             for h in HORIZON_NAMES:
                 line += f"{fmt_pct(t.get(f'roi_{h}')):>9}"
             print(line)
         print("-" * len(header))
 
-        foot_pos = f"{'% positiv':<22} {'':>7}"
-        foot_avg = f"{'Ø ROI':<22} {'':>7}"
-        foot_cmp = f"{'Compound':<22} {'':>7}"
+        foot_pos = f"{'% positiv':<24} {'':>7}"
+        foot_avg = f"{'Ø ROI':<24} {'':>7}"
+        foot_cmp = f"{'Compound':<24} {'':>7}"
         for h in HORIZON_NAMES:
             st = by_h[h]
             foot_pos += f"{fmt_pos(st):>9}"
@@ -971,7 +973,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         flush=True,
     )
     print(
-        f"Zeitraum Events: {start.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} UTC",
+        f"Zeitraum Events: {start.strftime('%Y-%m-%d %H:%M %Z')} → {end.strftime('%Y-%m-%d %H:%M %Z')} (Europe/Berlin)",
         flush=True,
     )
     print(

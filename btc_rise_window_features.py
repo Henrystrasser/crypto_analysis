@@ -7,7 +7,7 @@ Definition (Option A):
   DOWN: BTC fällt  um ≤ −threshold in window_min Minuten
 
 Defaults: siehe Config (Fenster, Intervall, LOOKBACK_DAYS, Top-N, Excludes).
-Zeitraum: primär Config FROM_DATE/TO_DATE oder LOOKBACK_DAYS (in VS Code ändern); CLI --from/--to/--lookback als optionaler Override (UTC).
+Zeitraum: primär Config FROM_DATE/TO_DATE oder LOOKBACK_DAYS (in VS Code ändern); CLI --from/--to/--lookback als optionaler Override (deutsche Zeit, Europe/Berlin).
 
 Pro Event × Coin u.a.:
   direction, btc_rise_window_min, btc_rise_threshold_pct,
@@ -22,6 +22,8 @@ Ausgabe: nur Konsole (keine CSV).
 Universum: Top-N ohne Stables/BTC, ohne EXCLUDE_SYMBOLS, Binance Spot USDT.
 Kein BTC als Referenz-Coin in der Ausgabe.
 
+Alle Uhrzeiten/Datumsgrenzen: deutsche Zeit (Europe/Berlin, CET/CEST).
+
 Keine Handelsempfehlung — Feature-/Analyse-Skript.
 Abhängigkeiten: pip install requests pandas numpy
 """
@@ -34,6 +36,7 @@ import sys
 from laggard_common import (
     add_time_range_arguments,
     fetch_top_coins_robust,
+    ms_to_berlin_str,
     resolve_event_window,
 )
 import time
@@ -48,10 +51,10 @@ import requests
 BTC_RISE_WINDOW_MIN = 60
 BTC_RISE_THRESHOLD_PCT = 1.0
 
-# --- Zeitraum (UTC) — hier in VS Code ändern ---
+# --- Zeitraum (deutsche Zeit, Europe/Berlin inkl. Sommer-/Winterzeit) — hier in VS Code ändern ---
 # Wenn FROM_DATE gesetzt: fester Zeitraum nutzen.
-#   TO_DATE=None → Ende = jetzt (UTC).
-#   Date-only: FROM = 00:00:00 UTC, TO = inklusiv bis 23:59:59.999 UTC.
+#   TO_DATE=None → Ende = jetzt.
+#   Date-only: FROM = 00:00:00 Berlin, TO = inklusiv bis 23:59:59.999 Berlin.
 # Wenn FROM_DATE=None: LOOKBACK_DAYS rückwärts ab jetzt.
 # FROM_DATE und LOOKBACK_DAYS nicht gleichzeitig "aktiv" (FROM hat Vorrang).
 FROM_DATE: Optional[str] = None  # z.B. "2026-09-01" oder "2026-09-01 12:00"
@@ -115,8 +118,9 @@ def utc_ms(dt: datetime) -> int:
     return int(dt.timestamp() * 1000)
 
 
-def ms_to_utc_str(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+# Anzeige aller Zeiten in deutscher Zeit (Europe/Berlin, CET/CEST) über
+# laggard_common.ms_to_berlin_str. Die Event-Erkennung (±X% im rollierenden
+# Fenster) arbeitet auf absoluten Zeitstempeln und ist zeitzonenunabhängig.
 
 
 def sleep_polite(seconds: float = 0.3) -> None:
@@ -370,8 +374,8 @@ def build_rows_for_coin(
             "direction": e.direction,
             "btc_rise_window_min": BTC_RISE_WINDOW_MIN,
             "btc_rise_threshold_pct": BTC_RISE_THRESHOLD_PCT,
-            "btc_rise_start": ms_to_utc_str(e.start_ms),
-            "btc_rise_end": ms_to_utc_str(e.end_ms),
+            "btc_rise_start": ms_to_berlin_str(e.start_ms),
+            "btc_rise_end": ms_to_berlin_str(e.end_ms),
             "btc_move_pct": e.btc_move_pct,
             "coin": coin,
             "coin_rise_pct_in_btc_window": coin_rise,
@@ -416,14 +420,14 @@ def print_coin_table(coin: str, rows: List[dict], direction: str) -> Dict[str, d
     )
     print("=" * 120)
     header = (
-        f"{'Start UTC':<22} {'End UTC':<22} {'BTC%':>7} {'Coin%':>7}"
+        f"{'Start (Berlin)':<24} {'Ende (Berlin)':<24} {'BTC%':>7} {'Coin%':>7}"
         + "".join(f"{c:>9}" for c in post_cols)
     )
     print(header)
     print("-" * len(header))
     for row in rows:
         line = (
-            f"{row['btc_rise_start']:<22} {row['btc_rise_end']:<22} "
+            f"{row['btc_rise_start']:<24} {row['btc_rise_end']:<24} "
             f"{fmt_pct(row['btc_move_pct']):>7} "
             f"{fmt_pct(row.get('coin_rise_pct_in_btc_window')):>7}"
         )
@@ -433,13 +437,13 @@ def print_coin_table(coin: str, rows: List[dict], direction: str) -> Dict[str, d
 
     # Fußzeilen: % positiv und darunter Ø Return (Gain/Loss) je Spalte
     print("-" * len(header))
-    foot = f"{'% positiv':<22} {'':<22} {'':>7} "
+    foot = f"{'% positiv':<24} {'':<24} {'':>7} "
     foot += f"{fmt_pos_pct(stats_by_col['coin_rise_pct_in_btc_window']):>7}"
     for c in post_cols:
         foot += f"{fmt_pos_pct(stats_by_col[c]):>9}"
     print(foot)
 
-    foot_avg = f"{'Ø Return':<22} {'':<22} {'':>7} "
+    foot_avg = f"{'Ø Return':<24} {'':<24} {'':>7} "
     foot_avg += f"{fmt_avg_ret(stats_by_col['coin_rise_pct_in_btc_window']):>7}"
     for c in post_cols:
         foot_avg += f"{fmt_avg_ret(stats_by_col[c]):>9}"
@@ -493,7 +497,7 @@ def list_events(title: str, events: List[BtcMoveEvent]) -> None:
     show = events[:20]
     for e in show:
         print(
-            f"   - {ms_to_utc_str(e.start_ms)} → {ms_to_utc_str(e.end_ms)} | "
+            f"   - {ms_to_berlin_str(e.start_ms)} → {ms_to_berlin_str(e.end_ms)} | "
             f"BTC {e.btc_move_pct:+.2f}%",
             flush=True,
         )
@@ -521,7 +525,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     start_ms, end_ms = utc_ms(start), utc_ms(end)
 
     print(
-        f"Zeitraum: {start.strftime('%Y-%m-%d')} → {end.strftime('%Y-%m-%d')} UTC",
+        f"Zeitraum: {start.strftime('%Y-%m-%d %H:%M %Z')} → {end.strftime('%Y-%m-%d %H:%M %Z')} (Europe/Berlin)",
         flush=True,
     )
     print(

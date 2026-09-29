@@ -1,5 +1,28 @@
+from zoneinfo import ZoneInfo
+
 import ccxt
 import pandas as pd
+
+
+# Alle Uhrzeiten/Offsets/Tage in diesem Skript sind deutsche Zeit (Europe/Berlin,
+# Sommer-/Winterzeit automatisch), konsistent mit simulation_offset_compute.py.
+# ccxt liefert UTC; umgerechnet wird genau einmal beim Laden der Daten.
+BERLIN = ZoneInfo("Europe/Berlin")
+
+
+def berlin_wallclock(day, hour):
+    """
+    Berliner Ortszeit `hour`:00 am Berliner Kalendertag `day` als tz-aware
+    Timestamp (oder None, wenn es diese Uhrzeit an dem Tag nicht gibt).
+    DST wie simulation_offset_compute.py: Frühjahr 02:00 existiert nicht ->
+    None (kein Trade für diese Stunde an dem Tag); Herbst 02:00 doppelt -> nur
+    das erste Auftreten (CEST). Dauern danach = echte Stunden.
+    """
+    naive = pd.to_datetime(day).normalize() + pd.Timedelta(hours=hour)
+    local = naive.tz_localize(BERLIN, ambiguous=True, nonexistent="NaT")
+    if pd.isna(local):
+        return None
+    return local
 
 
 def fetch_all_ohlcv(exchange, symbol, timeframe, since_timestamp):
@@ -47,9 +70,13 @@ def analyze_crypto_intraday_long(
     df = pd.DataFrame(
         ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"]
     )
-    df["datetime"] = pd.to_datetime(df["timestamp"], unit="ms")
+    # Einmalige Umrechnung: ccxt UTC-ms -> tz-aware UTC -> Europe/Berlin.
+    df["datetime"] = pd.to_datetime(
+        df["timestamp"], unit="ms", utc=True
+    ).dt.tz_convert(BERLIN)
     df.set_index("datetime", inplace=True)
     df = df[~df.index.duplicated(keep="first")]
+    # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
     df["date"] = df.index.date
 
     results = []
@@ -60,7 +87,11 @@ def analyze_crypto_intraday_long(
     # (Ende darf auf den Folgetag fallen — genau der Unterschied 02:00 vs 14:00)
     unique_dates = sorted(pd.unique(df["date"]))
     for date in unique_dates:
-        t1 = pd.Timestamp(date) + pd.Timedelta(hours=start_hour)
+        # Start = Berliner Ortszeit start_hour:00 am Berliner Tag (DST siehe
+        # berlin_wallclock); Ende = Start + interval_hours echte Stunden.
+        t1 = berlin_wallclock(date, start_hour)
+        if t1 is None:
+            continue
         t2 = t1 + pd.Timedelta(hours=interval_hours)
 
         if t1 not in df.index or t2 not in df.index:
@@ -75,9 +106,9 @@ def analyze_crypto_intraday_long(
         results.append(
             {
                 "Date": date,
-                "Time_1": t1.strftime("%Y-%m-%d %H:%M"),
+                "Time_1": t1.strftime("%Y-%m-%d %H:%M %Z"),
                 "Price_1": price_t1,
-                "Time_2": t2.strftime("%Y-%m-%d %H:%M"),
+                "Time_2": t2.strftime("%Y-%m-%d %H:%M %Z"),
                 "Price_2": price_t2,
                 "Price_Diff": diff,
                 "Diff (%)": round(percent_diff, 2),
@@ -124,7 +155,7 @@ def analyze_crypto_intraday_long(
     print("\n--- ERGEBNISSE (Langzeittest mit Muster-Check & Summen) ---")
     print(
         f"Getestetes Intervall: Start {start_hour:02d}:00, "
-        f"Ende {end_hour:02d}:00 "
+        f"Ende {end_hour:02d}:00 Berlin "
         f"(Offset {offset_hours}h, Dauer {interval_hours}h"
         f"{', über Mitternacht' if end_hour < start_hour else ''})"
     )
