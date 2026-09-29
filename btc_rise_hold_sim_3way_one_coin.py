@@ -776,6 +776,20 @@ def fmt_pos(stats: dict) -> str:
     return f"{p:5.0f}%"
 
 
+def vs_bh_for_stats(stats: dict, bh: Optional[dict]) -> Optional[float]:
+    """vsBH = Compound − Buy&Hold (gleiche Formel wie row['vs_bh_<h>'])."""
+    if bh is None or stats.get("compound_roi_pct") is None:
+        return None
+    return stats["compound_roi_pct"] - bh["buy_hold_roi_pct"]
+
+
+def fmt_vs_bh(v: Optional[float]) -> str:
+    """vsBH-Anzeige: '–' wenn nicht verfügbar."""
+    if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
+        return "–"
+    return fmt_pct(v)
+
+
 def print_coin_result(
     coin: str,
     direction: str,
@@ -821,16 +835,19 @@ def print_coin_result(
         foot_pos = f"{'% positiv':<24} {'':>7}"
         foot_avg = f"{'Ø ROI':<24} {'':>7}"
         foot_cmp = f"{'Compound':<24} {'':>7}"
+        foot_vbh = f"{'vsBH':<24} {'':>7}"
         for h in HORIZON_NAMES:
             st = by_h[h]
             foot_pos += f"{fmt_pos(st):>9}"
             foot_avg += f"{fmt_pct(st['avg_roi_pct']):>9}"
             foot_cmp += f"{fmt_pct(st['compound_roi_pct']):>9}"
+            foot_vbh += f"{fmt_vs_bh(vs_bh_for_stats(st, bh)):>9}"
         print(foot_pos)
         print(foot_avg)
         print(foot_cmp)
+        print(foot_vbh)
     else:
-        # denser one-line-per-horizon dump (Buy&Hold nur in End-Scorecard)
+        # denser one-line-per-horizon dump; vsBH = Compound − Buy&Hold
         for h in HORIZON_NAMES:
             st = by_h[h]
             n_used = st.get("n_used", st["n_trades"])
@@ -841,9 +858,12 @@ def print_coin_result(
             print(
                 f"  {h:>4}: n={n_txt:<10} "
                 f"%pos={fmt_pos(st)}  Ø={fmt_pct(st['avg_roi_pct'])}  "
-                f"Cmp={fmt_pct(st['compound_roi_pct'])}"
+                f"Cmp={fmt_pct(st['compound_roi_pct'])}  "
+                f"vsBH={fmt_vs_bh(vs_bh_for_stats(st, bh)):>7}"
             )
 
+    if bh is not None:
+        print(f"  B&H={fmt_pct(bh['buy_hold_roi_pct'])} (vsBH = Cmp − B&H)")
     print(flush=True)
     sys.stdout.flush()
 
@@ -906,10 +926,13 @@ def print_one_coin_scorecard(
     print(header)
     print("=" * 100)
 
-    # Wide table: Hold | UP n/%pos/Ø/Cmp | DOWN … | RANDOM …
+    # Wide table: Hold | UP n/%pos/Ø/Cmp/vsBH | DOWN … | RANDOM …
     hdr = f"{'Hold':<6}"
     for d in dirs:
-        hdr += f" | {d + ' n':>8} {d + ' %pos':>8} {d + ' Ø':>9} {d + ' Cmp':>10}"
+        hdr += (
+            f" | {d + ' n':>8} {d + ' %pos':>8} {d + ' Ø':>9} {d + ' Cmp':>10}"
+            f" {d + ' vsBH':>10}"
+        )
     print(hdr)
     print("-" * len(hdr))
 
@@ -918,12 +941,15 @@ def print_one_coin_scorecard(
         for d in dirs:
             s = by_dir.get(d)
             if s is None:
-                line += f" | {'n/a':>8} {'n/a':>8} {'n/a':>9} {'n/a':>10}"
+                line += (
+                    f" | {'n/a':>8} {'n/a':>8} {'n/a':>9} {'n/a':>10} {'–':>10}"
+                )
             else:
                 line += (
                     f" | {_n_txt(s, h):>8} {_pct_pos_txt(s, h):>8} "
                     f"{fmt_pct(s.get(f'avg_roi_{h}')):>9} "
-                    f"{fmt_pct(s.get(f'compound_roi_{h}')):>10}"
+                    f"{fmt_pct(s.get(f'compound_roi_{h}')):>10} "
+                    f"{fmt_vs_bh(s.get(f'vs_bh_{h}')):>10}"
                 )
         print(line)
 
@@ -1169,7 +1195,8 @@ def main(argv: Optional[List[str]] = None) -> None:
         "\nFertig. Jeder Hold = eigene Strategie "
         f"({', '.join(HORIZON_NAMES)}); kein globales Portfolio.\n"
         "n = n_used nach Non-Overlap; n_raw in Klammern wenn abweichend.\n"
-        "Compound = Produkt (1+roi)−1; UpAvg/DownAvg = Mittelwert von vs_bh über alle UP- bzw. DOWN-Holds.\n"
+        "Compound = Produkt (1+roi)−1; vsBH = Compound − Buy&Hold (Experiment-Metrik).\n"
+        "UpAvg/DownAvg = Mittelwert von vs_bh über alle UP- bzw. DOWN-Holds.\n"
         f"Ref={ref_base} ({ref_pair}). Buy&Hold = einmal halten über den Zeitraum.\n"
         "Nur Konsole — keine CSV. Keine Handelsempfehlung.\n"
     )
