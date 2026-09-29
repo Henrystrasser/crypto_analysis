@@ -13,6 +13,8 @@ Keine Handelsempfehlung — reine Research-Backtests.
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
 import sys
 import time
@@ -327,44 +329,262 @@ def _binance_get(
     raise RuntimeError("Binance GET fehlgeschlagen")
 
 
-def fetch_top_coins_no_stables(n: int = TOP_N) -> List[dict]:
+# ---------------------------------------------------------------------------
+# Coin-Universum: CoinGecko (Market-Cap) → lokaler Cache → Binance-Volumen
+# ---------------------------------------------------------------------------
+
+UNIVERSE_CACHE_DIR = Path(__file__).resolve().parent / ".cache"
+COINGECKO_HEADERS = {
+    "User-Agent": "crypto-analysis-research/1.0 (+personal backtest script; python-requests)",
+    "Accept": "application/json",
+}
+COINGECKO_MAX_TRIES = 4
+COINGECKO_RETRY_STATUS = {403, 429, 500, 502, 503, 504}
+# Zusätzlich nur für den Binance-Fallback: Fiat-/Stable-artige Basen, die bei
+# CoinGecko nicht in den Top-N auftauchen würden, auf Binance aber USDT-Pairs haben.
+BINANCE_FALLBACK_EXTRA_EXCLUDE = {
+    "EUR", "EURI", "AEUR", "GBP", "TRY", "BRL", "ARS", "JPY", "MXN",
+    "PLN", "RON", "UAH", "ZAR", "IDRT", "BIDR", "BVND", "NGN",
+    "XUSD", "BFUSD", "USDP", "PAX", "UST", "USTC",
+}
+LEVERAGED_SUFFIXES = ("UP", "DOWN", "BULL", "BEAR")
+
+
+def _is_stable_like(sym: str, stable_symbols: set) -> bool:
+    return sym in stable_symbols
+
+
+def _filter_symbols(
+    raw_symbols: Sequence[str],
+    n: int,
+    exclude_base: str,
+    stable_symbols: set,
+    exclude_symbols: set,
+) -> List[dict]:
     out: List[dict] = []
-    page = 1
-    while len(out) < n:
-        for attempt in range(8):
-            r = SESSION.get(
-                f"{COINGECKO}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": page,
-                    "sparkline": "false",
-                },
-                timeout=30,
-            )
-            if r.status_code == 429:
-                wait = 10 + attempt * 5
-                print(f"   CoinGecko 429 — warte {wait}s …", flush=True)
-                sleep_polite(wait)
-                continue
-            r.raise_for_status()
+    seen: set = set()
+    for s in raw_symbols:
+        sym = (s or "").upper()
+        if not sym or sym in seen:
+            continue
+        seen.add(sym)
+        if _is_stable_like(sym, stable_symbols) or sym in exclude_symbols or sym == exclude_base:
+            continue
+        out.append({"symbol": sym})
+        if len(out) >= n:
             break
-        else:
-            r.raise_for_status()
+    return out
+
+
+def _universe_cache_path(n: int) -> Path:
+    return UNIVERSE_CACHE_DIR / f"top_coins_{n}.json"
+
+
+def _write_universe_cache(n: int, raw_symbols: List[str]) -> None:
+    """Winzige JSON-Datei mit den rohen CoinGecko-Symbolen (Market-Cap-Reihenfolge)."""
+    try:
+        UNIVERSE_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = _universe_cache_path(n)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(
+            json.dumps(
+                {
+                    "source": "coingecko",
+                    "fetched_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "n": n,
+                    "raw_symbols": raw_symbols,
+                },
+                indent=0,
+            )
+        )
+        tmp.replace(path)
+    except OSError as exc:
+        print(f"   (Cache nicht geschrieben: {exc})", flush=True)
+
+
+def _read_universe_cache(n: int) -> Optional[dict]:
+    path = _universe_cache_path(n)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text())
+        if isinstance(data.get("raw_symbols"), list) and data["raw_symbols"]:
+            return data
+    except (OSError, ValueError) as exc:
+        print(f"   (Cache unlesbar: {path} — {exc})", flush=True)
+    return None
+
+
+def _coingecko_get(session: requests.Session, url: str, params: dict) -> requests.Response:
+    """GET mit UA/Accept (+ optional COINGECKO_API_KEY) und Backoff bei 403/429/5xx."""
+    headers = dict(COINGECKO_HEADERS)
+    api_key = os.environ.get("COINGECKO_API_KEY", "").strip()
+    if api_key:
+        headers["x-cg-demo-api-key"] = api_key
+    last_exc: Optional[Exception] = None
+    for attempt in range(COINGECKO_MAX_TRIES):
+        try:
+            r = session.get(url, params=params, headers=headers, timeout=30)
+        except requests.RequestException as exc:
+            last_exc = exc
+            r = None
+        if r is not None:
+            if r.status_code not in COINGECKO_RETRY_STATUS:
+                r.raise_for_status()
+                return r
+            last_exc = requests.HTTPError(
+                f"{r.status_code} CoinGecko {r.reason}", response=r
+            )
+        if attempt + 1 >= COINGECKO_MAX_TRIES:
+            break
+        wait = min(30.0, 4.0 * (2 ** attempt))
+        if r is not None and r.headers.get("Retry-After", "").isdigit():
+            wait = min(60.0, float(r.headers["Retry-After"]))
+        code = r.status_code if r is not None else type(last_exc).__name__
+        print(
+            f"   CoinGecko {code} — Versuch {attempt + 1}/{COINGECKO_MAX_TRIES}, warte {wait:.0f}s …",
+            flush=True,
+        )
+        sleep_polite(wait)
+    assert last_exc is not None
+    raise last_exc
+
+
+def _fetch_coingecko_raw_symbols(
+    n: int,
+    exclude_base: str,
+    stable_symbols: set,
+    exclude_symbols: set,
+    session: requests.Session,
+    coingecko: str,
+) -> List[str]:
+    raw: List[str] = []
+    page = 1
+    while len(_filter_symbols(raw, n, exclude_base, stable_symbols, exclude_symbols)) < n:
+        r = _coingecko_get(
+            session,
+            f"{coingecko}/coins/markets",
+            {
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 100,
+                "page": page,
+                "sparkline": "false",
+            },
+        )
         batch = r.json()
         if not batch:
             break
-        for c in batch:
-            sym = (c.get("symbol") or "").upper()
-            if sym in STABLE_SYMBOLS or sym in EXCLUDE_SYMBOLS or sym == "BTC":
-                continue
-            out.append({"symbol": sym})
-            if len(out) >= n:
-                break
+        raw.extend((c.get("symbol") or "").upper() for c in batch)
         page += 1
         sleep_polite(1.5)
-    return out[:n]
+    return raw
+
+
+def fetch_binance_volume_symbols(
+    n: int,
+    exclude_base: str = "BTC",
+    stable_symbols: Optional[set] = None,
+    exclude_symbols: Optional[set] = None,
+    binance_bases: Optional[Sequence[str]] = None,
+) -> List[dict]:
+    """Top-N Binance-Spot-USDT-Basen nach 24h-Quote-Volumen (ohne Stables/Leveraged/Excludes)."""
+    stable_symbols = STABLE_SYMBOLS if stable_symbols is None else stable_symbols
+    exclude_symbols = EXCLUDE_SYMBOLS if exclude_symbols is None else exclude_symbols
+    r = _binance_get("/api/v3/ticker/24hr", params={"type": "MINI"}, bases=binance_bases)
+    now_ms = int(time.time() * 1000)
+    rows = []
+    for t in r.json():
+        s = t.get("symbol", "")
+        if not s.endswith("USDT") or len(s) <= 4:
+            continue
+        try:
+            qv = float(t.get("quoteVolume") or 0.0)
+            close_ms = int(t.get("closeTime") or 0)
+        except (TypeError, ValueError):
+            continue
+        if qv <= 0 or now_ms - close_ms > 2 * 86_400_000:  # delistet / inaktiv
+            continue
+        try:  # unbekannte USD-Stables: 24h-Range komplett in 1.000 ± 1.5 %
+            hi, lo = float(t.get("highPrice") or 0), float(t.get("lowPrice") or 0)
+            if 0.985 <= lo and hi <= 1.015:
+                continue
+        except (TypeError, ValueError):
+            pass
+        rows.append((s[:-4], qv))
+    bases = {b for b, _ in rows}
+
+    def is_leveraged(b: str) -> bool:
+        for suf in LEVERAGED_SUFFIXES:
+            stem = b[: -len(suf)]
+            if b.endswith(suf) and len(stem) >= 3 and stem in bases:
+                return True
+        return False
+
+    rows.sort(key=lambda x: x[1], reverse=True)
+    ordered = [
+        b for b, _ in rows
+        if b not in BINANCE_FALLBACK_EXTRA_EXCLUDE
+        and "USD" not in b  # USD-Stables, die (noch) nicht in STABLE_SYMBOLS stehen
+        and not is_leveraged(b)
+    ]
+    return _filter_symbols(ordered, n, exclude_base, stable_symbols, exclude_symbols)
+
+
+def fetch_top_coins_robust(
+    n: int = TOP_N,
+    exclude_base: str = "BTC",
+    stable_symbols: Optional[set] = None,
+    exclude_symbols: Optional[set] = None,
+    session: Optional[requests.Session] = None,
+    coingecko: Optional[str] = None,
+    binance_bases: Optional[Sequence[str]] = None,
+) -> List[dict]:
+    """Top-N Nicht-Stables: CoinGecko → Cache (.cache/top_coins_<N>.json) → Binance-Volumen."""
+    stable_symbols = STABLE_SYMBOLS if stable_symbols is None else stable_symbols
+    exclude_symbols = EXCLUDE_SYMBOLS if exclude_symbols is None else exclude_symbols
+    exclude_base = (exclude_base or "").upper()
+    session = session or SESSION
+    coingecko = coingecko or COINGECKO
+
+    try:
+        raw = _fetch_coingecko_raw_symbols(
+            n, exclude_base, stable_symbols, exclude_symbols, session, coingecko
+        )
+        out = _filter_symbols(raw, n, exclude_base, stable_symbols, exclude_symbols)
+        if not out:
+            raise RuntimeError("CoinGecko lieferte keine Coins")
+        _write_universe_cache(n, raw)
+        print(f"   Universum-Quelle: CoinGecko (Market-Cap, {len(out)} Coins)", flush=True)
+        return out
+    except (requests.RequestException, RuntimeError, ValueError) as exc:
+        print(f"   CoinGecko fehlgeschlagen: {str(exc)[:160]}", flush=True)
+
+    cached = _read_universe_cache(n)
+    if cached:
+        out = _filter_symbols(
+            cached["raw_symbols"], n, exclude_base, stable_symbols, exclude_symbols
+        )
+        if out:
+            print(
+                f"   Universum-Quelle: Cache ({_universe_cache_path(n)}, "
+                f"Stand {cached.get('fetched_at_utc', '?')}, {len(out)} Coins)",
+                flush=True,
+            )
+            return out
+
+    out = fetch_binance_volume_symbols(
+        n, exclude_base, stable_symbols, exclude_symbols, binance_bases
+    )
+    print(
+        f"   Universum-Quelle: Binance-Volumen (Fallback, Top {len(out)} USDT-Spot nach 24h-Quote-Volumen)",
+        flush=True,
+    )
+    return out
+
+
+def fetch_top_coins_no_stables(n: int = TOP_N, exclude_base: str = "BTC") -> List[dict]:
+    return fetch_top_coins_robust(n, exclude_base=exclude_base)
 
 
 def binance_usdt_symbols() -> set:

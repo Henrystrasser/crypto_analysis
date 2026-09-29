@@ -48,7 +48,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
-from laggard_common import add_time_range_arguments, resolve_event_window
+from laggard_common import (
+    add_time_range_arguments,
+    fetch_top_coins_robust,
+    resolve_event_window,
+)
 
 import numpy as np
 import pandas as pd
@@ -57,9 +61,9 @@ import requests
 # --- Strategie / Event ---
 # Referenz-Coin für UP/DOWN-Events — hier in VS Code ändern; CLI --ref ist ein optionaler Override.
 # Base z.B. "BTC"/"ETH" oder Pair "ETHUSDT"
-REF_SYMBOL = "SHIB"
-BTC_RISE_WINDOW_MIN = 30
-BTC_RISE_THRESHOLD_PCT = 1.0
+REF_SYMBOL = "BTC"
+BTC_RISE_WINDOW_MIN = 60
+BTC_RISE_THRESHOLD_PCT = 2.0
 USE_THRESHOLD_CROSSING = True
 RANDOM_SEED = 42  # reproduzierbare Zufalls-Käufe
 # Pro Horizont: RANDOM-n_used = max(UP,DOWN)-n_used. Override: feste Anzahl je Horizont
@@ -93,7 +97,7 @@ HOLD_HORIZONS: Dict[str, int] = {
 FROM_DATE: Optional[str] = "2025-03-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
 TO_DATE: Optional[str] = "2026-09-28"    # z.B. "2026-09-02"
 LOOKBACK_DAYS = 400
-KLINE_INTERVAL = "30m"
+KLINE_INTERVAL = "1h"
 TOP_N = 100
 COIN_PAIRS: List[str] = []
 
@@ -211,43 +215,15 @@ def sleep_polite(seconds: float = 0.3) -> None:
 
 
 def fetch_top_coins_no_stables(n: int = TOP_N, exclude_base: str = "BTC") -> List[dict]:
-    out: List[dict] = []
-    page = 1
-    while len(out) < n:
-        for attempt in range(8):
-            r = SESSION.get(
-                f"{COINGECKO}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": page,
-                    "sparkline": "false",
-                },
-                timeout=30,
-            )
-            if r.status_code == 429:
-                wait = 10 + attempt * 5
-                print(f"   CoinGecko 429 — warte {wait}s …", flush=True)
-                sleep_polite(wait)
-                continue
-            r.raise_for_status()
-            break
-        else:
-            r.raise_for_status()
-        batch = r.json()
-        if not batch:
-            break
-        for c in batch:
-            sym = (c.get("symbol") or "").upper()
-            if sym in STABLE_SYMBOLS or sym in EXCLUDE_SYMBOLS or sym == exclude_base:
-                continue
-            out.append({"symbol": sym})
-            if len(out) >= n:
-                break
-        page += 1
-        sleep_polite(1.5)
-    return out[:n]
+    """CoinGecko → Cache → Binance-Volumen (Fallback); siehe laggard_common.fetch_top_coins_robust."""
+    return fetch_top_coins_robust(
+        n,
+        exclude_base=exclude_base,
+        stable_symbols=STABLE_SYMBOLS,
+        exclude_symbols=EXCLUDE_SYMBOLS,
+        session=SESSION,
+        coingecko=COINGECKO,
+    )
 
 
 def binance_usdt_symbols() -> set:
@@ -862,12 +838,12 @@ def print_coin_result(
 
 
 
-def mean_compound_across_horizons(row: dict) -> Optional[float]:
-    """Simple mean of per-horizon compound_roi_* values (None/NaN skipped)."""
+def mean_vs_bh_across_horizons(row: dict) -> Optional[float]:
+    """Mean of per-horizon vs_bh_* values (None/NaN skipped)."""
     vals: List[float] = []
     for h in HORIZON_NAMES:
-        v = row.get(f"compound_roi_{h}")
-        if v is None or (isinstance(v, float) and np.isnan(v)):
+        v = row.get(f"vs_bh_{h}")
+        if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
             continue
         vals.append(float(v))
     if not vals:
@@ -875,8 +851,15 @@ def mean_compound_across_horizons(row: dict) -> Optional[float]:
     return float(sum(vals) / len(vals))
 
 
+def fmt_avg_table_pct(v: Optional[float]) -> str:
+    """Format an averages-table value, using an en dash when unavailable."""
+    if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
+        return "–"
+    return fmt_pct(v)
+
+
 def print_up_down_avg_table(summary_rows: List[dict]) -> None:
-    """Print one coin table with mean Compound for UP and DOWN holds."""
+    """Print per-coin means of vs_bh for UP and DOWN holds."""
     by_coin: Dict[str, Dict[str, dict]] = {}
     for row in summary_rows:
         direction = row.get("direction")
@@ -886,12 +869,12 @@ def print_up_down_avg_table(summary_rows: List[dict]) -> None:
     ranked: List[Tuple[float, str, Optional[float]]] = []
     for coin, rows_by_direction in by_coin.items():
         up_avg = (
-            mean_compound_across_horizons(rows_by_direction["UP"])
+            mean_vs_bh_across_horizons(rows_by_direction["UP"])
             if "UP" in rows_by_direction
             else None
         )
         down_avg = (
-            mean_compound_across_horizons(rows_by_direction["DOWN"])
+            mean_vs_bh_across_horizons(rows_by_direction["DOWN"])
             if "DOWN" in rows_by_direction
             else None
         )
@@ -904,17 +887,15 @@ def print_up_down_avg_table(summary_rows: List[dict]) -> None:
     ranked.sort(key=lambda item: item[0], reverse=True)
 
     print("\n" + "=" * 60)
-    print("ÜBERSICHT UP/DOWN | Ø Compound über alle Holds (sortiert nach UpAvg)")
+    print("ÜBERSICHT UP/DOWN | Ø vs Buy&Hold über alle Holds (sortiert nach UpAvg)")
     print("=" * 60)
     hdr = f"{'Coin':<14} {'UpAvg':>11} {'DownAvg':>11}"
     print(hdr)
     print("-" * len(hdr))
     for up_sort, coin, down_avg in ranked:
         up_avg = None if up_sort == float("-inf") else up_sort
-        print(f"{coin:<14} {fmt_pct(up_avg):>11} {fmt_pct(down_avg):>11}")
-    print(
-        "UpAvg/DownAvg = Mittelwert der Compound-Werte über alle UP- bzw. DOWN-Holds."
-    )
+        print(f"{coin:<14} {fmt_avg_table_pct(up_avg):>11} {fmt_avg_table_pct(down_avg):>11}")
+    print("UpAvg/DownAvg = Mittelwert von vs_bh über alle UP- bzw. DOWN-Holds.")
 
 
 def resolve_universe(

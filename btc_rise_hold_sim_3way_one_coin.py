@@ -51,7 +51,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
-from laggard_common import add_time_range_arguments, resolve_event_window
+from laggard_common import (
+    add_time_range_arguments,
+    fetch_top_coins_robust,
+    resolve_event_window,
+)
 
 import numpy as np
 import pandas as pd
@@ -61,10 +65,10 @@ import requests
 # Referenz-Coin für UP/DOWN-Events — hier in VS Code ändern; CLI --ref ist ein optionaler Override.
 # Base z.B. "BTC"/"ETH" oder Pair "ETHUSDT"
 # Referenz = Event-Trigger; Ziel = der eine Coin zum Vergleich (Korrelation/Tendenz)
-REF_SYMBOL = "BNB"
-TARGET_SYMBOL = "VIRTUAL"  # Base oder Pair, z.B. "ETH" / "ETHUSDT"
-FROM_DATE: Optional[str] = "2024-01-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
-TO_DATE: Optional[str] = "2025-12-28"    # z.B. "2026-09-02"
+REF_SYMBOL = "BTC"
+TARGET_SYMBOL = "QNT"  # Base oder Pair, z.B. "ETH" / "ETHUSDT"
+FROM_DATE: Optional[str] = "2022-01-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
+TO_DATE: Optional[str] = "2024-12-28"    # z.B. "2026-09-02"
 BTC_RISE_WINDOW_MIN = 60
 BTC_RISE_THRESHOLD_PCT = 1.0
 USE_THRESHOLD_CROSSING = True
@@ -229,43 +233,15 @@ def sleep_polite(seconds: float = 0.3) -> None:
 
 
 def fetch_top_coins_no_stables(n: int = TOP_N, exclude_base: str = "BTC") -> List[dict]:
-    out: List[dict] = []
-    page = 1
-    while len(out) < n:
-        for attempt in range(8):
-            r = SESSION.get(
-                f"{COINGECKO}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": page,
-                    "sparkline": "false",
-                },
-                timeout=30,
-            )
-            if r.status_code == 429:
-                wait = 10 + attempt * 5
-                print(f"   CoinGecko 429 — warte {wait}s …", flush=True)
-                sleep_polite(wait)
-                continue
-            r.raise_for_status()
-            break
-        else:
-            r.raise_for_status()
-        batch = r.json()
-        if not batch:
-            break
-        for c in batch:
-            sym = (c.get("symbol") or "").upper()
-            if sym in STABLE_SYMBOLS or sym in EXCLUDE_SYMBOLS or sym == exclude_base:
-                continue
-            out.append({"symbol": sym})
-            if len(out) >= n:
-                break
-        page += 1
-        sleep_polite(1.5)
-    return out[:n]
+    """CoinGecko → Cache → Binance-Volumen (Fallback); siehe laggard_common.fetch_top_coins_robust."""
+    return fetch_top_coins_robust(
+        n,
+        exclude_base=exclude_base,
+        stable_symbols=STABLE_SYMBOLS,
+        exclude_symbols=EXCLUDE_SYMBOLS,
+        session=SESSION,
+        coingecko=COINGECKO,
+    )
 
 
 def binance_usdt_symbols() -> set:
@@ -871,17 +847,24 @@ def print_coin_result(
 
 
 
-def mean_avg_roi_across_horizons(row: dict) -> Optional[float]:
-    """Simple mean of per-horizon avg_roi_* values (None/NaN skipped)."""
+def mean_vs_bh_across_horizons(row: dict) -> Optional[float]:
+    """Mean of per-horizon vs_bh_* values (None/NaN skipped)."""
     vals: List[float] = []
     for h in HORIZON_NAMES:
-        v = row.get(f"avg_roi_{h}")
-        if v is None or (isinstance(v, float) and np.isnan(v)):
+        v = row.get(f"vs_bh_{h}")
+        if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
             continue
         vals.append(float(v))
     if not vals:
         return None
     return float(sum(vals) / len(vals))
+
+
+def fmt_avg_table_pct(v: Optional[float]) -> str:
+    """Format an averages-table value, using an en dash when unavailable."""
+    if v is None or (isinstance(v, (float, np.floating)) and np.isnan(v)):
+        return "–"
+    return fmt_pct(v)
 
 
 def _n_txt(row: dict, h: str) -> str:
@@ -942,14 +925,21 @@ def print_one_coin_scorecard(
                 )
         print(line)
 
-    # Mean Ø ROI one-liner for UP/DOWN
-    mean_parts = []
-    for d in ("UP", "DOWN"):
-        s = by_dir.get(d)
-        m = mean_avg_roi_across_horizons(s) if s else None
-        mean_parts.append(f"{d}={fmt_pct(m)}")
+    # Compact UP/DOWN table using the already-computed vs_bh_* summary fields.
+    up_avg = mean_vs_bh_across_horizons(by_dir["UP"]) if "UP" in by_dir else None
+    down_avg = (
+        mean_vs_bh_across_horizons(by_dir["DOWN"]) if "DOWN" in by_dir else None
+    )
     print()
-    print("Mean Ø ROI über alle Holds: " + "  ".join(mean_parts))
+    print("ÜBERSICHT UP/DOWN | Ø vs Buy&Hold über alle Holds (sortiert nach UpAvg)")
+    avg_hdr = f"{'Coin':<14} {'UpAvg':>11} {'DownAvg':>11}"
+    print(avg_hdr)
+    print("-" * len(avg_hdr))
+    print(
+        f"{coin:<14} {fmt_avg_table_pct(up_avg):>11} "
+        f"{fmt_avg_table_pct(down_avg):>11}"
+    )
+    print("UpAvg/DownAvg = Mittelwert von vs_bh über alle UP- bzw. DOWN-Holds.")
 
     # Buy&Hold once
     bh_row = by_dir.get("UP") or by_dir.get("DOWN") or next(iter(by_dir.values()), None)
@@ -960,10 +950,6 @@ def print_one_coin_scorecard(
         print(f"Buy&Hold: {bh_buy} → {bh_sell} | ROI {fmt_pct(bh_roi)}")
     else:
         print(f"Buy&Hold: {fmt_pct(bh_roi)}")
-    print(
-        "Mean Ø ROI = Mittelwert der Ø-ROI-Werte über die Hold-Horizonte "
-        "(jeder Horizont = eigene Strategie)."
-    )
 
 
 def resolve_target_pair(target_raw: str, ref_pair: str) -> str:
@@ -1181,7 +1167,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         "\nFertig. Jeder Hold = eigene Strategie "
         f"({', '.join(HORIZON_NAMES)}); kein globales Portfolio.\n"
         "n = n_used nach Non-Overlap; n_raw in Klammern wenn abweichend.\n"
-        "Compound = Produkt (1+roi)−1; Mean Ø ROI = Mittelwert der Ø-ROIs über Holds.\n"
+        "Compound = Produkt (1+roi)−1; UpAvg/DownAvg = Mittelwert von vs_bh über alle UP- bzw. DOWN-Holds.\n"
         f"Ref={ref_base} ({ref_pair}). Buy&Hold = einmal halten über den Zeitraum.\n"
         "Nur Konsole — keine CSV. Keine Handelsempfehlung.\n"
     )

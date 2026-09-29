@@ -8,6 +8,12 @@ import pandas as pd
 # einmal beim Laden der Daten (siehe main()).
 BERLIN = ZoneInfo("Europe/Berlin")
 
+# Kerzen-Timeframe. Der df-Index ist die Kerzen-OPEN-Zeit (ccxt-Timestamp);
+# gehandelt wird immer zum `close` einer Kerze, der erst zur Close-Zeit
+# = open + CANDLE_DURATION bekannt ist.
+TIMEFRAME = "1h"
+CANDLE_DURATION = pd.Timedelta(hours=1)
+
 
 def berlin_wallclock(day, hour):
     """
@@ -73,13 +79,32 @@ def custom_sell_condition(row, portfolio_state):
 
 
 def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
+    """
+    Trades der Reihe nach mit fortgeschriebenem Kapital ausführen.
+
+    Overlap-Schutz: Ein Trade wird übersprungen, wenn sein Kauf VOR dem Verkauf
+    des zuletzt AUSGEFÜHRTEN Trades liegt (das Kapital wäre dann noch gebunden,
+    z.B. gestern Offset 23 -> Verkauf heute 11:00, heute Offset 2 -> Kauf 02:00).
+    Verglichen werden die Kerzen-Open-Zeiten Buy_TS/Sell_TS. Kauf und Verkauf
+    werden beide zum Close ihrer Kerze ausgeführt (je +CANDLE_DURATION), daher
+    ist das gleichbedeutend mit dem Vergleich der Ausführungszeitpunkte.
+    Kauf == letzter Verkauf ist erlaubt.
+
+    Rückgabe: (Endwert, Trade-Log-DataFrame, Anzahl übersprungener Trades)
+    """
     cash = initial_cash
     crypto = 0.0
     position_open = False
     trade_log = []
+    last_sell_ts = None  # Sell-Zeit des zuletzt ausgeführten Trades
+    skipped = 0
 
     for i in range(len(results_df)):
         row = results_df.iloc[i]
+
+        if last_sell_ts is not None and row["Buy_TS"] < last_sell_ts:
+            skipped += 1
+            continue
 
         price_buy = row["Price_Buy"]
         time_buy = f"{row['Date_Buy']} {row['Time_Buy']}"
@@ -107,6 +132,7 @@ def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
             cash = gross_cash * (1 - fee_rate)
             crypto = 0.0
             position_open = False
+            last_sell_ts = row["Sell_TS"]
             trade_log.append(
                 {
                     "Time": time_sell,
@@ -121,7 +147,7 @@ def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
     if position_open:
         final_value = crypto * results_df.iloc[-1]["Price_Sell"]
 
-    return final_value, pd.DataFrame(trade_log)
+    return final_value, pd.DataFrame(trade_log), skipped
 
 
 def compute_buy_and_hold(df, start_date_str, end_date_str, fee_rate, initial_cash):
@@ -193,6 +219,9 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
                     "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
                     "Time_Sell": target_sell_dt.strftime("%H:%M %Z"),
                     "Price_Sell": price_sell,
+                    # Kerzen-Open-Zeiten (tz-aware Berlin); Preis = Close der Kerze
+                    "Buy_TS": current_dt,
+                    "Sell_TS": target_sell_dt,
                 }
             )
 
@@ -207,7 +236,14 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
 
 
 def find_best_offset(
-    df, interval_hours, start_date_str, end_date_str, offsets_to_test, fee_rate, initial_cash
+    df,
+    interval_hours,
+    start_date_str,
+    end_date_str,
+    offsets_to_test,
+    fee_rate,
+    initial_cash,
+    decision_time=None,
 ):
     """
     Besten Offset (Berliner Stunde 0–23) im Zeitfenster finden.
@@ -221,6 +257,14 @@ def find_best_offset(
 
     Fallback (kein Offset mit vollständigem 5er-Fenster): der einzelne
     Offset mit dem höchsten Endwert (Fenster nur aus dem Offset selbst).
+
+    Kein Lookahead (decision_time, tz-aware): Es zählen nur Trades, deren
+    Verkaufs-Kerze zum Entscheidungszeitpunkt schon GESCHLOSSEN ist, d.h.
+    Sell-Kerzen-Open + CANDLE_DURATION <= decision_time (der Verkaufspreis ist
+    der Close dieser Kerze). Sonst würden z.B. am Vortag gekaufte Trades mit
+    spätem Offset, die erst am Handelstag verkaufen, heutige Preise in die
+    heutige Wahl leaken. 5er-Fenster-Regel und Fallback gelten auf dieser
+    gefilterten Menge. decision_time=None -> kein Filter.
     """
     roi_by_offset = {}
     val_by_offset = {}
@@ -229,10 +273,14 @@ def find_best_offset(
         result_df = generate_result_df(
             df, offset, interval_hours, start_date_str, end_date_str
         )
+        if decision_time is not None and not result_df.empty:
+            result_df = result_df[
+                result_df["Sell_TS"] + CANDLE_DURATION <= decision_time
+            ]
         if result_df.empty:
             continue
 
-        final_val, _ = run_simulation(
+        final_val, _, _ = run_simulation(
             result_df, fee_rate=fee_rate, initial_cash=initial_cash
         )
         val_by_offset[offset] = final_val
@@ -285,6 +333,8 @@ def generate_single_day_row(df, day, offset_hours, interval_hours):
         "Date_Sell": target_sell_dt.strftime("%Y-%m-%d"),
         "Time_Sell": target_sell_dt.strftime("%H:%M %Z"),
         "Price_Sell": df.loc[target_sell_dt, "close"],
+        "Buy_TS": current_dt,
+        "Sell_TS": target_sell_dt,
         "Offset": offset_hours,
     }
 
@@ -304,7 +354,17 @@ def run_daily_walk_forward(
       1) besten Offset (5er-Fenster-Regel) auf den letzten lookback_days Tagen
       2) an diesem Tag mit genau diesem Offset handeln (Long interval_hours)
     Kapital wird über die Tage fortgeschrieben.
-    Rückgabe: (Endwert, benutzte Offsets, Tages-Logs, Trade-Log-DataFrame)
+
+    Entscheidungszeitpunkt = 00:00 Berlin des Handelstags. Lookback = Kauftage
+    day-lookback_days .. day-1 (Anzahl Tage unverändert), aber nur Trades, deren
+    Verkaufs-Kerze vor Mitternacht geschlossen ist (siehe find_best_offset).
+    Bei 12h Haltedauer fällt damit am Vortag i.d.R. Offset 12-23 weg (diese
+    Offsets haben im Lookback dann einen Trade weniger); das Fenster wird
+    bewusst NICHT verlängert.
+    Überlappende Trades (Kauf vor letztem Verkauf) werden in run_simulation
+    übersprungen.
+    Rückgabe: (Endwert, benutzte Offsets, Tages-Logs, Trade-Log-DataFrame,
+               Anzahl übersprungener Trades)
     """
     start = pd.Timestamp(start_date_str).normalize()
     end = pd.Timestamp(end_date_str).normalize()
@@ -321,6 +381,8 @@ def run_daily_walk_forward(
     for day in trade_days:
         prev_start = (day - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
         prev_end = (day - pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        # Entscheidung um 00:00 Berlin (Mitternacht ist in Berlin nie DST-betroffen)
+        decision_time = berlin_wallclock(day, 0)
 
         best_offset, _ = find_best_offset(
             df,
@@ -330,6 +392,7 @@ def run_daily_walk_forward(
             offsets_to_test,
             fee_rate,
             initial_capital,
+            decision_time=decision_time,
         )
 
         if best_offset is None:
@@ -364,13 +427,13 @@ def run_daily_walk_forward(
         )
 
     if not rows:
-        return initial_capital, offsets_used, day_logs, pd.DataFrame()
+        return initial_capital, offsets_used, day_logs, pd.DataFrame(), 0
 
     result_df = pd.DataFrame(rows)
-    final_val, trade_log = run_simulation(
+    final_val, trade_log, skipped = run_simulation(
         result_df, fee_rate=fee_rate, initial_cash=initial_capital
     )
-    return final_val, offsets_used, day_logs, trade_log
+    return final_val, offsets_used, day_logs, trade_log, skipped
 
 
 def main():
@@ -406,7 +469,7 @@ def main():
 
     for symbol in top_200_symbols:
         print(f"Teste: {symbol:<14} ...", end=" ", flush=True)
-        ohlcv = fetch_all_ohlcv(exchange, symbol, "1h", since_timestamp)
+        ohlcv = fetch_all_ohlcv(exchange, symbol, TIMEFRAME, since_timestamp)
 
         if len(ohlcv) < 100:
             print("Übersprungen (zu wenig Historie).")
@@ -435,7 +498,7 @@ def main():
             print("Keine Hold-Daten.")
             continue
 
-        final_val, offsets_used, day_logs, trade_log = run_daily_walk_forward(
+        final_val, offsets_used, day_logs, trade_log, skipped = run_daily_walk_forward(
             df,
             start_date_str,
             end_date_str,
@@ -454,6 +517,9 @@ def main():
         roi = (profit / initial_capital) * 100
         last_offset = offsets_used[-1]
         offsets_list_str = str(offsets_used)
+        n_trades = (
+            int((trade_log["Action"] == "BUY").sum()) if not trade_log.empty else 0
+        )
 
         portfolio_summary.append(
             {
@@ -461,6 +527,8 @@ def main():
                 "Letzter Offset": f"{last_offset:02d}:00 Berlin",
                 "Beste Offsets": offsets_list_str,
                 "Tage": len(offsets_used),
+                "Trades": n_trades,
+                "Übersprungen (Overlap)": skipped,
                 "Daten von": f"{data_start} bis {data_end}",
                 "Strategie ROI (%)": roi,
                 "Hold ROI (%)": hold["Hold ROI (%)"],
@@ -472,6 +540,7 @@ def main():
             f"letzter Offset {last_offset:02d}:00 Berlin | Strat {roi:+.2f}% | "
             f"Hold {hold['Hold ROI (%)']:+.2f}% | "
             f"Edge {roi - hold['Hold ROI (%)']:+.2f}% | "
+            f"Trades {n_trades} | übersprungen (Overlap) {skipped} | "
             f"Offsets {offsets_list_str}"
         )
         if not trade_log.empty:
@@ -508,6 +577,10 @@ def main():
             f"Offset aus den letzten {lookback_days} Tagen bestimmt (Score = Summe "
             "der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, "
             "zyklisch) und nur an diesem Tag gehandelt. "
+            "Entscheidung um 00:00 Berlin: im Lookback zählen nur Trades, deren "
+            "Verkaufs-Kerze vor Mitternacht geschlossen ist (kein Lookahead). "
+            "Ein Trade, dessen Kauf vor dem Verkauf des zuletzt ausgeführten "
+            "Trades läge, wird übersprungen (kein Overlap). "
             "Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. "
             "Sommer-/Winterzeit). "
             "Kapital wird über die Tage fortgeschrieben. "

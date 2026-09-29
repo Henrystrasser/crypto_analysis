@@ -31,7 +31,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from laggard_common import add_time_range_arguments, resolve_event_window
+from laggard_common import (
+    add_time_range_arguments,
+    fetch_top_coins_robust,
+    resolve_event_window,
+)
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -120,34 +124,15 @@ def sleep_polite(seconds: float = 0.3) -> None:
 
 
 def fetch_top_coins_no_stables(n: int = TOP_N) -> List[dict]:
-    out: List[dict] = []
-    page = 1
-    while len(out) < n:
-        r = SESSION.get(
-            f"{COINGECKO}/coins/markets",
-            params={
-                "vs_currency": "usd",
-                "order": "market_cap_desc",
-                "per_page": 100,
-                "page": page,
-                "sparkline": "false",
-            },
-            timeout=30,
-        )
-        r.raise_for_status()
-        batch = r.json()
-        if not batch:
-            break
-        for c in batch:
-            sym = (c.get("symbol") or "").upper()
-            if sym in STABLE_SYMBOLS or sym in EXCLUDE_SYMBOLS or sym == "BTC":
-                continue
-            out.append({"symbol": sym})
-            if len(out) >= n:
-                break
-        page += 1
-        sleep_polite(1.2)
-    return out[:n]
+    """CoinGecko → Cache → Binance-Volumen (Fallback); siehe laggard_common.fetch_top_coins_robust."""
+    return fetch_top_coins_robust(
+        n,
+        exclude_base="BTC",
+        stable_symbols=STABLE_SYMBOLS,
+        exclude_symbols=EXCLUDE_SYMBOLS,
+        session=SESSION,
+        coingecko=COINGECKO,
+    )
 
 
 def binance_usdt_symbols() -> set:

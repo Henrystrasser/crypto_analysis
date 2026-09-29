@@ -39,7 +39,11 @@ from __future__ import annotations
 import argparse
 import sys
 
-from laggard_common import add_time_range_arguments, resolve_event_window
+from laggard_common import (
+    add_time_range_arguments,
+    fetch_top_coins_robust,
+    resolve_event_window,
+)
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -219,43 +223,15 @@ def parse_cli_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return p.parse_args(argv)
 
 def fetch_top_coins_no_stables(n: int = TOP_N, exclude_base: str = "BTC") -> List[dict]:
-    out: List[dict] = []
-    page = 1
-    while len(out) < n:
-        for attempt in range(8):
-            r = SESSION.get(
-                f"{COINGECKO}/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": page,
-                    "sparkline": "false",
-                },
-                timeout=30,
-            )
-            if r.status_code == 429:
-                wait = 10 + attempt * 5
-                print(f"   CoinGecko 429 — warte {wait}s …", flush=True)
-                sleep_polite(wait)
-                continue
-            r.raise_for_status()
-            break
-        else:
-            r.raise_for_status()
-        batch = r.json()
-        if not batch:
-            break
-        for c in batch:
-            sym = (c.get("symbol") or "").upper()
-            if sym in STABLE_SYMBOLS or sym in EXCLUDE_SYMBOLS or sym == exclude_base:
-                continue
-            out.append({"symbol": sym})
-            if len(out) >= n:
-                break
-        page += 1
-        sleep_polite(1.5)
-    return out[:n]
+    """CoinGecko → Cache → Binance-Volumen (Fallback); siehe laggard_common.fetch_top_coins_robust."""
+    return fetch_top_coins_robust(
+        n,
+        exclude_base=exclude_base,
+        stable_symbols=STABLE_SYMBOLS,
+        exclude_symbols=EXCLUDE_SYMBOLS,
+        session=SESSION,
+        coingecko=COINGECKO,
+    )
 
 
 def binance_usdt_symbols() -> set:

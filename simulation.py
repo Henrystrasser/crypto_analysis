@@ -137,8 +137,8 @@ def main():
     exchange = ccxt.binance()
     temp_symbol = "NEXO/USDT"
 
-    start_date_str = "2026-07-20"
-    end_date_str = "2026-09-28"
+    start_date_str = "2024-03-20"
+    end_date_str = "2026-09-15"
     interval_hours = 12
     fee_rate = 0.00075
     initial_capital = 10000.0
