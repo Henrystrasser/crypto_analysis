@@ -165,12 +165,12 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
 
 def main():
     exchange = ccxt.binance()
-    temp_symbol = "NEXO/USDT"
+    temp_symbol = "ZEC/USDT"
 
-    start_date_str = "2024-03-20"
-    end_date_str = "2026-09-15"
+    start_date_str = "2024-05-15"
+    end_date_str = "2024-07-15"
     interval_hours = 12
-    fee_rate = 0.00075
+    fee_rate = 0.001
     initial_capital = 10000.0
 
     COMPARE_OFFSETS = True

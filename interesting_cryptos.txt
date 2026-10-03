@@ -1,40 +1,9 @@
-#==========================================
- STARTE OFFSET-VERGLEICH FÜR: [0, 3, 6, 8, 10]
-==========================================
-
-ERGEBNIS-ÜBERSICHT:
- Offset (Stunde) Uhrzeit 1 Uhrzeit 2  Endkapital (USDT)  Gewinn/Verlust  ROI (%)
-               0     00:00     12:00            4602.23        -5397.77   -53.98
-               3     03:00     15:00           16283.07         6283.07    62.83
-               6     06:00     18:00           42082.90        32082.90   320.83
-               8     08:00     20:00           25479.50        15479.50   154.80
-              10     10:00     22:00           31124.85        21124.85   211.25
-
-
-
-TOP 50 OPTIMIERUNGS-ERGEBNIS (Mit jeweils bestem Offset)
-======================================================================
-     Symbol Bester Offset  Endkapital  Gewinn/Verlust  ROI (%)
-   FTM/USDT            8h    55873.46        45873.46   458.73
-  DOGE/USDT            6h    52186.35        42186.35   421.86
-   JUP/USDT            8h    50753.68        40753.68   407.54
-  RUNE/USDT           21h    37403.46        27403.46   274.03
-PENDLE/USDT            8h    34163.86        24163.86   241.64
-   SOL/USDT           21h    33088.99        23088.99   230.89
-   BNB/USDT            8h    31001.50        21001.50   210.01
-  LINK/USDT            6h    30915.38        20915.38   209.15
-   FET/USDT           21h    30770.97        20770.97   207.71
-
-
-ZCASH hat in 9 Monaten seit 2026 600% gemacht auf offset = 9! Aber anderer Offset als in vorigen Jahren
-
-
-POL hat um 20 Uhr offset beste offset und um 20 Uhr ausserdem 60% pattern! interessant!
-
 NEXO hat 200% return über 2 Jahre mit Strat, obwohl er negativen ROI als Coin hat. sehr konsisten im plus bei 7/8 Uhr
+Es gibt auf NEXO.com eine Börse bei der man evtl billig handeln kann!
+Ordi wohl auch!
+Solange ich Limit-Käufe (mit Wiederholungen) mache, zahle ich den Spread effektiv nicht.
 
 PORTAL auf 15 Uhr performt sehr konsistent über dem Hold roi! 280%! sehr konsistent!
-
 
 koppelbar mit NEXO: WLD um 19 Uhr
 auch mit HOT um 19 Uhr
@@ -52,6 +21,208 @@ XLM auch
 Morph bei BTC Fall
 LTC auch sehr gut +100%; SUi auch
 AAVE +200%
+
+COIN SOLUSDT | DOWN | Buy nach BTC ≤ −2.0% / 180m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 123 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -20.67%
+========================================================================================================================
+    3h: n=114 (raw 123)  %pos=   50%  Ø=-0.25%  Compound=-26.47%
+    6h: n=108 (raw 123)  %pos=   46%  Ø=-0.04%  Compound=-7.31%
+   12h: n=98 (raw 123)  %pos=   51%  Ø=-0.05%  Compound=-11.22%
+   24h: n=87 (raw 123)  %pos=   43%  Ø=+0.05%  Compound=-4.62%
+   48h: n=67 (raw 123)  %pos=   52%  Ø=+0.12%  Compound=-4.19%
+   60h: n=64 (raw 123)  %pos=   52%  Ø=+0.77%  Compound=+46.82%
+    72: n=61 (raw 123)  %pos=   67%  Ø=+1.59%  Compound=+132.60%   konsistent aber nicht so hoch wie andere!
+    78: n=57 (raw 123)  %pos=   61%  Ø=+0.78%  Compound=+36.63%
+    84: n=56 (raw 123)  %pos=   59%  Ø=+0.96%  Compound=+43.97%
+    90: n=53 (raw 123)  %pos=   57%  Ø=+0.61%  Compound=+16.94%
+   96h: n=50 (raw 123)  %pos=   56%  Ø=-0.10%  Compound=-17.62%
+  120h: n=49 (raw 123)  %pos=   57%  Ø=+0.56%  Compound=+12.29%
+  192h: n=37 (raw 122)  %pos=   57%  Ø=+0.02%  Compound=-21.01%
+
+
+COIN VIRTUALUSDT | DOWN | Buy nach BTC ≤ −2.0% / 180m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 123 Trades
+Buy&Hold über Zeitraum: 2025-04-11 16:00:00 CEST → 2026-09-28 23:00:00 CEST | ROI +51.91%
+========================================================================================================================
+    3h: n=92 (raw 123)  %pos=   52%  Ø=-0.06%  Compound=-9.93%
+    6h: n=90 (raw 123)  %pos=   53%  Ø=-0.02%  Compound=-13.31%
+   12h: n=82 (raw 123)  %pos=   52%  Ø=+0.40%  Compound=+18.03%
+   24h: n=73 (raw 123)  %pos=   53%  Ø=+0.68%  Compound=+32.01%
+   48h: n=58 (raw 123)  %pos=   47%  Ø=+1.04%  Compound=+35.70%
+   60h: n=56 (raw 123)  %pos=   46%  Ø=+1.01%  Compound=+38.13%
+    72: n=54 (raw 123)  %pos=   59%  Ø=+3.07%  Compound=+281.50%
+    78: n=50 (raw 123)  %pos=   60%  Ø=+2.42%  Compound=+114.96%
+    84: n=49 (raw 123)  %pos=   61%  Ø=+3.23%  Compound=+211.78%
+    90: n=46 (raw 123)  %pos=   54%  Ø=+3.29%  Compound=+174.33%
+   96h: n=45 (raw 123)  %pos=   58%  Ø=+2.91%  Compound=+127.45%
+  120h: n=45 (raw 123)  %pos=   51%  Ø=+3.97%  Compound=+220.57%
+  192h: n=34 (raw 122)  %pos=   50%  Ø=+1.45%  Compound=+11.85%
+
+COIN BCHUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -2.84%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   47%  Ø=+0.15%  Compound=+21.84%
+   12h: n=137 (raw 189)  %pos=   58%  Ø=+0.48%  Compound=+81.17%
+   24h: n=115 (raw 189)  %pos=   49%  Ø=+0.45%  Compound=+45.63%
+   48h: n=89 (raw 189)  %pos=   52%  Ø=+1.13%  Compound=+116.77%   relativ konsistent! interessante Kandidat!
+   60h: n=81 (raw 189)  %pos=   52%  Ø=+1.23%  Compound=+115.20%
+    72: n=78 (raw 189)  %pos=   46%  Ø=+0.46%  Compound=+18.05%
+    78: n=76 (raw 189)  %pos=   47%  Ø=+0.24%  Compound=-0.18%
+    84: n=75 (raw 189)  %pos=   44%  Ø=-0.16%  Compound=-27.95%
+    90: n=72 (raw 189)  %pos=   43%  Ø=+0.34%  Compound=+0.90%
+   96h: n=69 (raw 189)  %pos=   46%  Ø=+0.91%  Compound=+43.95%
+  120h: n=61 (raw 189)  %pos=   48%  Ø=+0.99%  Compound=+35.14%
+  192h: n=50 (raw 189)  %pos=   48%  Ø=+0.94%  Compound=+22.98%
+
+COIN UNIUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +15.47%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   45%  Ø=-0.02%  Compound=-8.15%
+   12h: n=137 (raw 189)  %pos=   48%  Ø=+0.31%  Compound=+40.93%
+   24h: n=115 (raw 189)  %pos=   50%  Ø=+0.48%  Compound=+48.00%
+   48h: n=89 (raw 189)  %pos=   49%  Ø=+1.18%  Compound=+121.80%
+   60h: n=81 (raw 189)  %pos=   54%  Ø=+2.28%  Compound=+329.67%   interessant!
+    72: n=78 (raw 189)  %pos=   49%  Ø=+1.38%  Compound=+113.71%
+    78: n=76 (raw 189)  %pos=   47%  Ø=+1.16%  Compound=+72.86%
+    84: n=75 (raw 189)  %pos=   47%  Ø=+0.59%  Compound=+10.37%
+    90: n=72 (raw 189)  %pos=   47%  Ø=+0.92%  Compound=+34.67%
+   96h: n=69 (raw 189)  %pos=   43%  Ø=+1.42%  Compound=+79.52%
+  120h: n=61 (raw 189)  %pos=   46%  Ø=+1.13%  Compound=+43.43%
+  192h: n=50 (raw 189)  %pos=   52%  Ø=+0.79%  Compound=+1.73%
+
+COIN TAOUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -7.68%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   48%  Ø=-0.12%  Compound=-22.34%
+   12h: n=137 (raw 189)  %pos=   50%  Ø=+0.52%  Compound=+77.83%
+   24h: n=115 (raw 189)  %pos=   49%  Ø=+0.69%  Compound=+80.92%
+   48h: n=89 (raw 189)  %pos=   48%  Ø=+1.18%  Compound=+108.81%
+   60h: n=81 (raw 189)  %pos=   53%  Ø=+1.78%  Compound=+204.85%  konsistent und relativ billige Gebühren
+    72: n=78 (raw 189)  %pos=   45%  Ø=+1.01%  Compound=+59.05%
+    78: n=76 (raw 189)  %pos=   46%  Ø=+0.67%  Compound=+22.45%
+    84: n=75 (raw 189)  %pos=   41%  Ø=+0.08%  Compound=-27.55%
+    90: n=72 (raw 189)  %pos=   43%  Ø=+0.96%  Compound=+31.83%
+   96h: n=69 (raw 189)  %pos=   45%  Ø=+0.91%  Compound=+26.32%
+  120h: n=61 (raw 189)  %pos=   46%  Ø=+0.92%  Compound=+14.84%
+  192h: n=50 (raw 189)  %pos=   52%  Ø=+1.06%  Compound=+6.91%
+  
+  
+COIN TAOUSDT | DOWN | Buy nach BTC ≤ −2.0% / 180m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 123 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -7.68%
+========================================================================================================================
+    3h: n=114 (raw 123)  %pos=   55%  Ø=+0.09%  Compound=+5.03%
+    6h: n=108 (raw 123)  %pos=   48%  Ø=+0.21%  Compound=+17.58%
+   12h: n=98 (raw 123)  %pos=   56%  Ø=+0.10%  Compound=+0.05%
+   24h: n=87 (raw 123)  %pos=   54%  Ø=+0.26%  Compound=+7.87%
+   48h: n=67 (raw 123)  %pos=   52%  Ø=+0.32%  Compound=+5.95%
+   60h: n=64 (raw 123)  %pos=   58%  Ø=+1.41%  Compound=+110.54%
+    72: n=61 (raw 123)  %pos=   61%  Ø=+2.75%  Compound=+301.27%    ziemlich konsistent! sehr interessanter Kandidat! wobei nicht komplett bestätigt.
+    78: n=57 (raw 123)  %pos=   56%  Ø=+1.83%  Compound=+107.02%
+    84: n=56 (raw 123)  %pos=   59%  Ø=+1.66%  Compound=+87.34%
+    90: n=53 (raw 123)  %pos=   55%  Ø=+1.01%  Compound=+35.85%
+   96h: n=50 (raw 123)  %pos=   50%  Ø=+0.52%  Compound=+0.94%
+  120h: n=49 (raw 123)  %pos=   57%  Ø=+2.11%  Compound=+110.14%
+  192h: n=37 (raw 122)  %pos=   54%  Ø=+1.09%  Compound=+9.55%
+
+COIN TAOUSDT | DOWN | Buy nach BTC ≤ −2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 170 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -7.68%
+========================================================================================================================
+    6h: n=149 (raw 170)  %pos=   48%  Ø=+0.05%  Compound=-1.99%
+   12h: n=138 (raw 170)  %pos=   51%  Ø=+0.21%  Compound=+19.13%
+   24h: n=113 (raw 170)  %pos=   53%  Ø=+0.39%  Compound=+28.31%
+   48h: n=89 (raw 170)  %pos=   52%  Ø=+0.72%  Compound=+33.61%
+   60h: n=82 (raw 170)  %pos=   52%  Ø=+0.53%  Compound=+20.90%
+    72: n=76 (raw 170)  %pos=   54%  Ø=+2.12%  Compound=+236.45%
+    78: n=73 (raw 170)  %pos=   48%  Ø=+1.88%  Compound=+155.94%
+    84: n=70 (raw 170)  %pos=   56%  Ø=+1.20%  Compound=+58.99%
+    90: n=69 (raw 170)  %pos=   55%  Ø=+1.04%  Compound=+48.98%
+   96h: n=66 (raw 170)  %pos=   47%  Ø=+1.19%  Compound=+42.32%
+  120h: n=58 (raw 170)  %pos=   43%  Ø=+0.27%  Compound=-20.46%
+  192h: n=42 (raw 169)  %pos=   40%  Ø=-0.43%  Compound=-42.16%
+Vergleich Buy&Hold (einfach halten): -7.68%
+
+COIN FILUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -68.14%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   45%  Ø=-0.16%  Compound=-25.20%
+   12h: n=137 (raw 189)  %pos=   52%  Ø=+0.33%  Compound=+47.65%
+   24h: n=115 (raw 189)  %pos=   48%  Ø=-0.04%  Compound=-15.35%
+   48h: n=89 (raw 189)  %pos=   45%  Ø=+1.23%  Compound=+71.05%
+   60h: n=81 (raw 189)  %pos=   53%  Ø=+2.42%  Compound=+235.31%  nicht soo konsistent
+    72: n=78 (raw 189)  %pos=   46%  Ø=+1.16%  Compound=+41.11%
+    78: n=76 (raw 189)  %pos=   41%  Ø=+0.75%  Compound=-3.94%
+    84: n=75 (raw 189)  %pos=   43%  Ø=-0.32%  Compound=-49.84%
+    90: n=72 (raw 189)  %pos=   47%  Ø=+0.11%  Compound=-32.41%
+   96h: n=69 (raw 189)  %pos=   43%  Ø=+0.65%  Compound=-9.65%
+  120h: n=61 (raw 189)  %pos=   39%  Ø=+0.22%  Compound=-22.55%
+  192h: n=50 (raw 189)  %pos=   42%  Ø=+0.26%  Compound=-43.17%
+Vergleich Buy&Hold (einfach halten): -68.14%
+
+COIN DASHUSDT | DOWN | Buy nach BTC ≤ −2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 170 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +146.89%
+========================================================================================================================
+    6h: n=149 (raw 170)  %pos=   49%  Ø=+0.17%  Compound=+12.33%
+   12h: n=138 (raw 170)  %pos=   49%  Ø=+0.92%  Compound=+141.19%
+   24h: n=113 (raw 170)  %pos=   50%  Ø=+1.38%  Compound=+222.43%   anscheinend hier sehr konsistent. andere eher nicht
+   48h: n=89 (raw 170)  %pos=   49%  Ø=+0.68%  Compound=+11.97%
+   60h: n=82 (raw 170)  %pos=   46%  Ø=+0.99%  Compound=+34.89%
+    72: n=76 (raw 170)  %pos=   50%  Ø=+1.31%  Compound=+71.21%
+    78: n=73 (raw 170)  %pos=   44%  Ø=+1.40%  Compound=+60.16%
+    84: n=70 (raw 170)  %pos=   46%  Ø=+0.59%  Compound=-19.17%
+    90: n=69 (raw 170)  %pos=   43%  Ø=+0.65%  Compound=-19.64%
+   96h: n=66 (raw 170)  %pos=   42%  Ø=+0.85%  Compound=-12.19%
+  120h: n=58 (raw 170)  %pos=   43%  Ø=+1.82%  Compound=+36.18%
+  192h: n=42 (raw 169)  %pos=   50%  Ø=+4.19%  Compound=+60.01%
+
+COIN PENGUUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +1.94%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   44%  Ø=+0.29%  Compound=+41.60%
+   12h: n=137 (raw 189)  %pos=   54%  Ø=+1.07%  Compound=+254.77%
+   24h: n=115 (raw 189)  %pos=   48%  Ø=+1.22%  Compound=+202.93%  konsistent, aber nicht so hohe Rendite seit 2024
+   48h: n=89 (raw 189)  %pos=   52%  Ø=+1.79%  Compound=+196.75%
+   60h: n=81 (raw 189)  %pos=   53%  Ø=+2.45%  Compound=+304.55%
+    72: n=78 (raw 189)  %pos=   44%  Ø=+0.29%  Compound=-22.63%
+    78: n=76 (raw 189)  %pos=   39%  Ø=+0.19%  Compound=-30.28%
+    84: n=75 (raw 189)  %pos=   39%  Ø=-0.96%  Compound=-71.34%
+    90: n=72 (raw 189)  %pos=   43%  Ø=+0.13%  Compound=-47.98%
+   96h: n=69 (raw 189)  %pos=   41%  Ø=+1.17%  Compound=-13.11%
+  120h: n=61 (raw 189)  %pos=   41%  Ø=+1.78%  Compound=+2.00%
+  192h: n=50 (raw 189)  %pos=   48%  Ø=+4.20%  Compound=+84.88%
+
+COIN STXUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -62.94%
+========================================================================================================================
+    6h: n=157 (raw 189)  %pos=   44%  Ø=+0.01%  Compound=-3.84%
+   12h: n=137 (raw 189)  %pos=   52%  Ø=+0.56%  Compound=+100.51%
+   24h: n=115 (raw 189)  %pos=   49%  Ø=+0.68%  Compound=+80.99%
+   48h: n=89 (raw 189)  %pos=   49%  Ø=+1.12%  Compound=+105.91%
+   60h: n=81 (raw 189)  %pos=   47%  Ø=+1.75%  Compound=+173.61%
+    72: n=78 (raw 189)  %pos=   40%  Ø=+0.63%  Compound=+14.58%
+    78: n=76 (raw 189)  %pos=   41%  Ø=+0.69%  Compound=+4.85%
+    84: n=75 (raw 189)  %pos=   31%  Ø=-0.21%  Compound=-45.89%
+    90: n=72 (raw 189)  %pos=   38%  Ø=+0.33%  Compound=-22.66%
+   96h: n=69 (raw 189)  %pos=   39%  Ø=+0.91%  Compound=+4.77%
+  120h: n=61 (raw 189)  %pos=   43%  Ø=+0.76%  Compound=-11.05%
+  192h: n=50 (raw 189)  %pos=   40%  Ø=+0.47%  Compound=-38.26%
+
+COIN VIRTUALUSDT | UP | Buy nach BTC ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 189 Trades
+Buy&Hold über Zeitraum: 2025-04-11 16:00:00 CEST → 2026-09-28 23:00:00 CEST | ROI +51.91%
+========================================================================================================================
+    6h: n=132 (raw 189)  %pos=   43%  Ø=+0.03%  Compound=-4.52%
+   12h: n=118 (raw 189)  %pos=   50%  Ø=+0.78%  Compound=+113.50%
+   24h: n=101 (raw 189)  %pos=   49%  Ø=+0.74%  Compound=+60.82%
+   48h: n=78 (raw 189)  %pos=   51%  Ø=+2.10%  Compound=+244.76%
+   60h: n=73 (raw 189)  %pos=   51%  Ø=+2.98%  Compound=+424.69% sehr inkonsistent
+    72: n=70 (raw 189)  %pos=   51%  Ø=+1.22%  Compound=+76.11%
+    78: n=68 (raw 189)  %pos=   51%  Ø=+0.29%  Compound=-8.36%
+    84: n=68 (raw 189)  %pos=   41%  Ø=-0.51%  Compound=-49.36%
+    90: n=66 (raw 189)  %pos=   47%  Ø=+0.43%  Compound=-12.07%
+   96h: n=63 (raw 189)  %pos=   54%  Ø=+1.76%  Compound=+56.61%
+  120h: n=57 (raw 189)  %pos=   46%  Ø=+0.85%  Compound=+2.11%
+  192h: n=46 (raw 189)  %pos=   39%  Ø=+4.16%  Compound=+89.84%  hier eher konsistent
+
+
+1%
 COIN XRPUSDT | UP | Buy nach BTC ≥ +1.0% / 30m | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 918 Trades
 Buy&Hold über Zeitraum: 2024-07-28 14:10:00 UTC → 2026-09-26 14:05:00 UTC | ROI +157.51%
 ========================================================================================================================
@@ -94,7 +265,7 @@ Buy&Hold über Zeitraum: 2023-05-05 18:00:00 UTC → 2026-09-28 23:00:00 UTC | R
    12h: n=453 (raw 684)  %pos=   46%  Ø=+0.49%  Compound=+304.31%
    24h: n=358 (raw 684)  %pos=   47%  Ø=+0.94%  Compound=+764.76%
    48h: n=274 (raw 684)  %pos=   45%  Ø=+0.96%  Compound=+133.22%
-   60h: n=247 (raw 684)  %pos=   45%  Ø=+1.24%  Compound=+119.45%
+   60h: n=247 (raw 684)  %pos=   45%  Ø=+1.24%  Compound=+119.45%   hier halbwegs konsistent
     72: n=225 (raw 684)  %pos=   46%  Ø=+1.59%  Compound=+208.87%
     78: n=214 (raw 684)  %pos=   43%  Ø=+1.45%  Compound=+105.17%
     84: n=205 (raw 684)  %pos=   42%  Ø=+1.62%  Compound=+117.86%
@@ -114,7 +285,7 @@ Buy&Hold über Zeitraum: 2023-03-01 00:00:00 UTC → 2026-09-28 23:00:00 UTC | R
    48h: n=287 (raw 689)  %pos=   53%  Ø=+0.48%  Compound=+86.87%
    60h: n=262 (raw 689)  %pos=   51%  Ø=+0.68%  Compound=+155.86%
     72: n=241 (raw 689)  %pos=   54%  Ø=+1.39%  Compound=+939.50%
-    78: n=229 (raw 689)  %pos=   54%  Ø=+1.73%  Compound=+1715.02%		!!!
+    78: n=229 (raw 689)  %pos=   54%  Ø=+1.73%  Compound=+1715.02%		!!!  hat sich aber nicht bewahrheitet
     84: n=218 (raw 689)  %pos=   55%  Ø=+1.32%  Compound=+554.83%
     90: n=210 (raw 689)  %pos=   52%  Ø=+1.22%  Compound=+408.93%
    96h: n=200 (raw 689)  %pos=   52%  Ø=+0.99%  Compound=+156.30%
@@ -152,7 +323,7 @@ Buy&Hold über Zeitraum: 2023-03-01 00:00:00 UTC → 2026-09-28 23:00:00 UTC | R
     72: n=241 (raw 689)  %pos=   47%  Ø=+0.74%  Compound=+240.20%
     78: n=229 (raw 689)  %pos=   49%  Ø=+0.81%  Compound=+260.24%
     84: n=218 (raw 689)  %pos=   50%  Ø=+1.16%  Compound=+387.16%
-    90: n=210 (raw 689)  %pos=   50%  Ø=+1.56%  Compound=+820.49%  ! konsistent!
+    90: n=210 (raw 689)  %pos=   50%  Ø=+1.56%  Compound=+820.49%  ! konsistent! super!
    96h: n=200 (raw 689)  %pos=   48%  Ø=+1.13%  Compound=+258.82%
   120h: n=172 (raw 689)  %pos=   47%  Ø=+1.73%  Compound=+328.90%
   192h: n=122 (raw 687)  %pos=   42%  Ø=+0.49%  Compound=+1.07%
@@ -224,12 +395,165 @@ HBARUSDT       UP       85  857    47%    +2.59%   +128.71%    +36.53%    +92.18
 Ether down:
 HBARUSDT       DOWN    148  877    45%    +1.21%    +90.63%    +36.53%    +54.10%   +132.55%
 
+COIN BCHUSDT | UP | Buy nach ETH ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 381 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -2.84%
+========================================================================================================================
+    6h: n=317 (raw 381)  %pos=   46%  Ø=-0.02%  Compound=-11.82%
+   12h: n=264 (raw 381)  %pos=   52%  Ø=+0.18%  Compound=+44.82%
+   24h: n=209 (raw 381)  %pos=   48%  Ø=+0.34%  Compound=+66.83%
+   48h: n=147 (raw 381)  %pos=   53%  Ø=+0.84%  Compound=+152.70%
+   60h: n=131 (raw 381)  %pos=   53%  Ø=+1.16%  Compound=+239.52%  sieht sehr gut aus! zerfällt aber bei 2023 bis 2024
+    72: n=116 (raw 381)  %pos=   51%  Ø=+0.34%  Compound=+21.93%
+    78: n=113 (raw 381)  %pos=   51%  Ø=+0.44%  Compound=+31.16%
+    84: n=110 (raw 381)  %pos=   51%  Ø=+0.59%  Compound=+50.83%
+    90: n=105 (raw 381)  %pos=   48%  Ø=+0.89%  Compound=+80.67%
+   96h: n=98 (raw 381)  %pos=   49%  Ø=+0.97%  Compound=+87.00%
+  120h: n=81 (raw 381)  %pos=   48%  Ø=+0.39%  Compound=-0.52%
+  192h: n=59 (raw 381)  %pos=   51%  Ø=+1.28%  Compound=+62.50%
+  
+  COIN VIRTUALUSDT | DOWN | Buy nach ETH ≤ −2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 398 Trades
+Buy&Hold über Zeitraum: 2025-04-11 16:00:00 CEST → 2026-09-28 23:00:00 CEST | ROI +51.91%
+========================================================================================================================
+    6h: n=298 (raw 398)  %pos=   51%  Ø=+0.00%  Compound=-20.34%
+   12h: n=242 (raw 398)  %pos=   42%  Ø=-0.04%  Compound=-34.20%
+   24h: n=185 (raw 398)  %pos=   45%  Ø=-0.27%  Compound=-62.13%
+   48h: n=137 (raw 398)  %pos=   44%  Ø=+0.92%  Compound=+57.52%
+   60h: n=123 (raw 398)  %pos=   49%  Ø=+1.35%  Compound=+140.49%
+    72: n=109 (raw 398)  %pos=   54%  Ø=+1.85%  Compound=+248.14%   evtl, schwer zu sagen bei diesem COin
+    78: n=104 (raw 398)  %pos=   51%  Ø=+1.14%  Compound=+36.01%
+    84: n=100 (raw 398)  %pos=   50%  Ø=+1.31%  Compound=+55.97%
+    90: n=96 (raw 398)  %pos=   54%  Ø=+1.35%  Compound=+73.79%
+   96h: n=91 (raw 398)  %pos=   48%  Ø=+0.37%  Compound=-25.84%
+  120h: n=79 (raw 398)  %pos=   52%  Ø=+2.36%  Compound=+108.04%
+  192h: n=55 (raw 397)  %pos=   44%  Ø=+1.45%  Compound=-17.89%
+Vergleich Buy&Hold (einfach halten): +51.91%
+
+XRP
+COIN QNTUSDT | DOWN | Buy nach XRP ≤ −2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 449 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +145.66%
+========================================================================================================================
+    6h: n=357 (raw 449)  %pos=   48%  Ø=+0.03%  Compound=-7.17%
+   12h: n=307 (raw 449)  %pos=   47%  Ø=+0.05%  Compound=-8.29%
+   24h: n=227 (raw 449)  %pos=   41%  Ø=-0.13%  Compound=-46.56%
+   48h: n=162 (raw 447)  %pos=   47%  Ø=+1.03%  Compound=+181.84%
+   60h: n=139 (raw 447)  %pos=   46%  Ø=+1.05%  Compound=+146.08%   halbwegs konsistent, aber in 2026 hängt hinter BH
+    72: n=126 (raw 447)  %pos=   44%  Ø=+1.43%  Compound=+211.68%
+    78: n=120 (raw 446)  %pos=   45%  Ø=+0.61%  Compound=+47.96%
+    84: n=111 (raw 446)  %pos=   43%  Ø=+2.13%  Compound=+200.46%
+    90: n=107 (raw 446)  %pos=   42%  Ø=+2.91%  Compound=+373.54%
+   96h: n=102 (raw 446)  %pos=   43%  Ø=+2.08%  Compound=+171.18%
+  120h: n=86 (raw 445)  %pos=   44%  Ø=+0.29%  Compound=-3.41%
+  192h: n=59 (raw 442)  %pos=   47%  Ø=+4.92%  Compound=+129.77%
+Vergleich Buy&Hold (einfach halten): +145.66%
+
+COIN QNTUSDT | UP | Buy nach XRP ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 433 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +145.66%
+========================================================================================================================
+    6h: n=345 (raw 433)  %pos=   44%  Ø=-0.14%  Compound=-43.36%
+   12h: n=291 (raw 433)  %pos=   49%  Ø=+0.35%  Compound=+78.16%
+   24h: n=224 (raw 433)  %pos=   51%  Ø=+0.40%  Compound=+91.87%
+   48h: n=157 (raw 432)  %pos=   49%  Ø=+0.86%  Compound=+169.67%
+   60h: n=140 (raw 432)  %pos=   50%  Ø=+1.69%  Compound=+434.63%
+    72: n=124 (raw 431)  %pos=   47%  Ø=+1.44%  Compound=+226.30%
+    78: n=118 (raw 431)  %pos=   47%  Ø=+1.64%  Compound=+202.08%
+    84: n=113 (raw 431)  %pos=   50%  Ø=+1.81%  Compound=+255.30%
+    90: n=106 (raw 431)  %pos=   45%  Ø=+0.68%  Compound=+51.17%
+   96h: n=98 (raw 431)  %pos=   45%  Ø=+0.75%  Compound=+58.12%
+  120h: n=86 (raw 430)  %pos=   48%  Ø=+2.70%  Compound=+202.40%
+  192h: n=59 (raw 424)  %pos=   46%  Ø=+0.86%  Compound=+24.24%
+
+COIN AAVEUSDT | UP | Buy nach XRP ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 433 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -24.19%
+========================================================================================================================
+    6h: n=345 (raw 433)  %pos=   43%  Ø=-0.08%  Compound=-31.57%
+   12h: n=291 (raw 433)  %pos=   46%  Ø=+0.12%  Compound=+17.29%
+   24h: n=224 (raw 433)  %pos=   50%  Ø=+0.41%  Compound=+86.88%
+   48h: n=157 (raw 432)  %pos=   50%  Ø=+0.68%  Compound=+88.84%
+   60h: n=140 (raw 432)  %pos=   50%  Ø=+0.75%  Compound=+86.19%
+    72: n=124 (raw 431)  %pos=   48%  Ø=+0.46%  Compound=+15.57%
+    78: n=118 (raw 431)  %pos=   42%  Ø=-0.17%  Compound=-44.90%
+    84: n=113 (raw 431)  %pos=   50%  Ø=+0.13%  Compound=-23.24%
+    90: n=106 (raw 431)  %pos=   44%  Ø=+0.43%  Compound=+7.61%
+   96h: n=98 (raw 431)  %pos=   47%  Ø=+0.55%  Compound=+8.85%
+  120h: n=86 (raw 430)  %pos=   48%  Ø=+0.46%  Compound=-17.01%
+  192h: n=59 (raw 424)  %pos=   47%  Ø=+0.15%  Compound=-28.66%
+
+COIN CAKEUSDT | UP | Buy nach XRP ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 433 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +28.56%
+========================================================================================================================
+    6h: n=345 (raw 433)  %pos=   46%  Ø=-0.01%  Compound=-12.97%
+   12h: n=291 (raw 433)  %pos=   46%  Ø=-0.13%  Compound=-42.32%
+   24h: n=224 (raw 433)  %pos=   49%  Ø=+0.02%  Compound=-16.41%
+   48h: n=157 (raw 432)  %pos=   48%  Ø=+0.54%  Compound=+65.44%
+   60h: n=140 (raw 432)  %pos=   50%  Ø=+0.94%  Compound=+138.58%  hat sich gar nicht bestätigt
+    72: n=124 (raw 431)  %pos=   52%  Ø=+0.83%  Compound=+78.51%
+    78: n=118 (raw 431)  %pos=   49%  Ø=+0.77%  Compound=+75.47%
+    84: n=113 (raw 431)  %pos=   48%  Ø=+1.01%  Compound=+100.54%
+    90: n=106 (raw 431)  %pos=   46%  Ø=+0.99%  Compound=+86.82%
+   96h: n=98 (raw 431)  %pos=   44%  Ø=+1.05%  Compound=+81.38%
+  120h: n=86 (raw 430)  %pos=   42%  Ø=+0.16%  Compound=-18.96%
+  192h: n=59 (raw 424)  %pos=   54%  Ø=+1.27%  Compound=+41.92%
+
+COIN CRVUSDT | DOWN | Buy nach XRP ≤ −2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 449 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -19.87%
+========================================================================================================================
+    6h: n=357 (raw 449)  %pos=   49%  Ø=+0.12%  Compound=+20.38%
+   12h: n=307 (raw 449)  %pos=   52%  Ø=+0.14%  Compound=+10.94%
+   24h: n=227 (raw 449)  %pos=   48%  Ø=+0.01%  Compound=-31.35%
+   48h: n=162 (raw 447)  %pos=   51%  Ø=+0.13%  Compound=-18.81%
+   60h: n=139 (raw 447)  %pos=   46%  Ø=+0.55%  Compound=+39.22%
+    72: n=126 (raw 447)  %pos=   52%  Ø=+1.40%  Compound=+252.70%  relativ konsistent!
+    78: n=120 (raw 446)  %pos=   49%  Ø=+1.03%  Compound=+88.51%
+    84: n=111 (raw 446)  %pos=   50%  Ø=+1.40%  Compound=+146.09%
+    90: n=107 (raw 446)  %pos=   48%  Ø=+1.15%  Compound=+88.60%
+   96h: n=102 (raw 446)  %pos=   50%  Ø=+1.16%  Compound=+90.61%
+  120h: n=86 (raw 445)  %pos=   47%  Ø=+0.56%  Compound=-0.79%
+  192h: n=59 (raw 442)  %pos=   49%  Ø=+0.89%  Compound=-7.79%
+Vergleich Buy&Hold (einfach halten): -19.87%
+
+COIN PENGUUSDT | UP | Buy nach XRP ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 433 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +1.94%
+========================================================================================================================
+    6h: n=345 (raw 433)  %pos=   45%  Ø=+0.05%  Compound=-5.54%
+   12h: n=291 (raw 433)  %pos=   48%  Ø=+0.32%  Compound=+72.40%
+   24h: n=224 (raw 433)  %pos=   43%  Ø=+0.61%  Compound=+103.58%
+   48h: n=157 (raw 432)  %pos=   48%  Ø=+1.05%  Compound=+132.31%   nicht konsistent
+   60h: n=140 (raw 432)  %pos=   46%  Ø=+1.28%  Compound=+118.68%
+    72: n=124 (raw 431)  %pos=   43%  Ø=+0.79%  Compound=-7.04%
+    78: n=118 (raw 431)  %pos=   42%  Ø=+0.61%  Compound=-28.70%
+    84: n=113 (raw 431)  %pos=   41%  Ø=+0.67%  Compound=-28.15%
+    90: n=106 (raw 431)  %pos=   42%  Ø=+0.01%  Compound=-53.58%
+   96h: n=98 (raw 431)  %pos=   42%  Ø=+0.39%  Compound=-35.55%
+  120h: n=86 (raw 430)  %pos=   35%  Ø=+0.40%  Compound=-60.72%
+  192h: n=59 (raw 424)  %pos=   46%  Ø=+2.41%  Compound=-8.75%
+Vergleich Buy&Hold (einfach halten): +1.94%
+
+COIN VIRTUALUSDT | UP | Buy nach XRP ≥ +2.0% / 360m | Hold 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 433 Trades
+Buy&Hold über Zeitraum: 2025-04-11 16:00:00 CEST → 2026-09-28 23:00:00 CEST | ROI +51.91%
+========================================================================================================================
+    6h: n=306 (raw 433)  %pos=   40%  Ø=-0.18%  Compound=-52.53%
+   12h: n=262 (raw 433)  %pos=   48%  Ø=+0.03%  Compound=-18.11%
+   24h: n=205 (raw 433)  %pos=   43%  Ø=+0.31%  Compound=+7.36%
+   48h: n=144 (raw 432)  %pos=   47%  Ø=+1.15%  Compound=+149.82%
+   60h: n=130 (raw 432)  %pos=   45%  Ø=+1.72%  Compound=+221.68%  nicht konsistent, aber vll Potential
+    72: n=114 (raw 431)  %pos=   47%  Ø=+1.46%  Compound=+108.43%
+    78: n=109 (raw 431)  %pos=   46%  Ø=+0.95%  Compound=+19.89%
+    84: n=105 (raw 431)  %pos=   47%  Ø=+1.07%  Compound=+29.03%
+    90: n=98 (raw 431)  %pos=   44%  Ø=+0.59%  Compound=-9.78%
+   96h: n=90 (raw 431)  %pos=   47%  Ø=+1.54%  Compound=+68.14%
+  120h: n=80 (raw 430)  %pos=   46%  Ø=+1.84%  Compound=+30.22%
+  192h: n=55 (raw 424)  %pos=   47%  Ø=+3.06%  Compound=+39.26%
+Vergleich Buy&Hold (einfach halten): +51.91%
+
+
 XRP (up) 96h
 PEPE evtl?
 QNTUSDT        UP      153 1098    44%    +1.11%   +181.39%   +123.38%    +58.02%   +213.07%
 HBARUSDT       UP      153 1098    42%    +1.04%    +79.08%    +36.50%    +42.58%   +118.68%
 TAOUSDT        UP      153 1098    46%    +0.93%    +38.37%     +0.18%    +38.19%   +101.34%
 ENAUSDT        UP      153 1098    43%    +1.20%    +13.81%    -39.52%    +53.33%    +87.69%
+
+
 
 BNB 96:
 Viele Coins mit 100%+!!
@@ -333,7 +657,7 @@ Buy&Hold über Zeitraum: 2023-03-01 00:00:00 UTC → 2026-09-28 23:00:00 UTC | R
    12h: n=542 (raw 848)  %pos=   46%  Ø=-0.07%  Compound=-57.08%
    24h: n=422 (raw 848)  %pos=   44%  Ø=+0.22%  Compound=+18.87%
    48h: n=307 (raw 848)  %pos=   50%  Ø=+0.81%  Compound=+398.77%
-   60h: n=269 (raw 848)  %pos=   51%  Ø=+1.39%  Compound=+1418.33%
+   60h: n=269 (raw 848)  %pos=   51%  Ø=+1.39%  Compound=+1418.33%  interessant!
     72: n=239 (raw 848)  %pos=   48%  Ø=+0.48%  Compound=+37.56%
     78: n=230 (raw 848)  %pos=   45%  Ø=+0.46%  Compound=+8.96%
     84: n=221 (raw 848)  %pos=   49%  Ø=+1.29%  Compound=+311.44%
@@ -535,6 +859,138 @@ ZROUSDT        UP       259(644)    57%    +0.75%   +278.14%    -41.68%   +319.8
 ENAUSDT        UP       259(644)    47%    +0.67%   +223.67%    -36.69%   +260.36%
 RENDERUSDT     UP       259(644)    49%    +0.57%   +195.51%    -49.37%   +244.88%
 
+
+SOLANA:
+COIN ETHUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +19.34%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   51%  Ø=+0.07%  Compound=+8.62%
+    6h: n=142 (raw 162)  %pos=   46%  Ø=+0.24%  Compound=+32.88%
+   12h: n=129 (raw 162)  %pos=   51%  Ø=+0.32%  Compound=+41.96%
+   24h: n=107 (raw 162)  %pos=   48%  Ø=+0.32%  Compound=+30.10%
+   48h: n=84 (raw 162)  %pos=   45%  Ø=+0.76%  Compound=+67.22%
+   60h: n=79 (raw 161)  %pos=   51%  Ø=+1.26%  Compound=+129.36%
+    72: n=74 (raw 161)  %pos=   50%  Ø=+0.71%  Compound=+43.66%
+    78: n=71 (raw 161)  %pos=   55%  Ø=+1.08%  Compound=+86.10%
+    84: n=68 (raw 161)  %pos=   50%  Ø=+0.95%  Compound=+67.46%
+    90: n=67 (raw 161)  %pos=   43%  Ø=+1.05%  Compound=+74.14%
+   96h: n=67 (raw 161)  %pos=   40%  Ø=+0.84%  Compound=+48.93%
+  120h: n=59 (raw 161)  %pos=   51%  Ø=+0.97%  Compound=+50.56%
+  192h: n=44 (raw 161)  %pos=   57%  Ø=+0.88%  Compound=+21.31%
+
+COIN ADAUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -61.55%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   50%  Ø=-0.03%  Compound=-10.05%
+    6h: n=142 (raw 162)  %pos=   52%  Ø=+0.12%  Compound=+8.60%
+   12h: n=129 (raw 162)  %pos=   47%  Ø=+0.29%  Compound=+30.18%
+   24h: n=107 (raw 162)  %pos=   50%  Ø=+0.06%  Compound=-6.54%
+   48h: n=84 (raw 162)  %pos=   51%  Ø=+1.23%  Compound=+101.98%
+   60h: n=79 (raw 161)  %pos=   58%  Ø=+1.51%  Compound=+125.54%
+    72: n=74 (raw 161)  %pos=   57%  Ø=+0.64%  Compound=+23.94%
+    78: n=71 (raw 161)  %pos=   58%  Ø=+1.24%  Compound=+91.17%
+    84: n=68 (raw 161)  %pos=   56%  Ø=+0.95%  Compound=+56.43%
+    90: n=67 (raw 161)  %pos=   54%  Ø=+0.84%  Compound=+33.76%
+   96h: n=67 (raw 161)  %pos=   48%  Ø=+0.67%  Compound=+11.68%
+  120h: n=59 (raw 161)  %pos=   42%  Ø=+0.16%  Compound=-19.10%
+  192h: n=44 (raw 161)  %pos=   39%  Ø=-0.81%  Compound=-45.00%
+
+
+COIN BCHUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -2.84%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   37%  Ø=-0.26%  Compound=-35.02%
+    6h: n=142 (raw 162)  %pos=   49%  Ø=-0.13%  Compound=-20.00%
+   12h: n=129 (raw 162)  %pos=   47%  Ø=+0.02%  Compound=-3.82%
+   24h: n=107 (raw 162)  %pos=   49%  Ø=-0.09%  Compound=-16.81%
+   48h: n=84 (raw 162)  %pos=   54%  Ø=+1.02%  Compound=+92.71%
+   60h: n=79 (raw 161)  %pos=   49%  Ø=+1.65%  Compound=+184.19%
+    72: n=74 (raw 161)  %pos=   57%  Ø=+1.00%  Compound=+71.73%
+    78: n=71 (raw 161)  %pos=   55%  Ø=+1.29%  Compound=+109.87%
+    84: n=68 (raw 161)  %pos=   51%  Ø=+0.95%  Compound=+64.66%   hier konsistent! sonst nicht
+    90: n=67 (raw 161)  %pos=   49%  Ø=+0.99%  Compound=+65.34%
+   96h: n=67 (raw 161)  %pos=   54%  Ø=+1.00%  Compound=+64.42%
+  120h: n=59 (raw 161)  %pos=   56%  Ø=+1.52%  Compound=+87.50%
+  192h: n=44 (raw 161)  %pos=   50%  Ø=+1.02%  Compound=+20.72%
+
+COIN UNIUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +15.47%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   46%  Ø=-0.04%  Compound=-10.55%
+    6h: n=142 (raw 162)  %pos=   47%  Ø=+0.07%  Compound=+1.94%
+   12h: n=129 (raw 162)  %pos=   52%  Ø=+0.24%  Compound=+24.65%
+   24h: n=107 (raw 162)  %pos=   53%  Ø=+0.24%  Compound=+15.38%
+   48h: n=84 (raw 162)  %pos=   55%  Ø=+1.26%  Compound=+135.56%
+   60h: n=79 (raw 161)  %pos=   54%  Ø=+1.93%  Compound=+229.30% ! bei 2% sehr konsistent!
+    72: n=74 (raw 161)  %pos=   58%  Ø=+1.59%  Compound=+142.60%
+    78: n=71 (raw 161)  %pos=   58%  Ø=+1.76%  Compound=+169.56% 
+    84: n=68 (raw 161)  %pos=   59%  Ø=+1.70%  Compound=+148.32%
+    90: n=67 (raw 161)  %pos=   54%  Ø=+1.54%  Compound=+116.66%
+   96h: n=67 (raw 161)  %pos=   57%  Ø=+1.26%  Compound=+75.68%
+  120h: n=59 (raw 161)  %pos=   54%  Ø=+1.46%  Compound=+70.63%
+  192h: n=44 (raw 161)  %pos=   50%  Ø=+0.97%  Compound=+5.83%
+
+
+COIN ENAUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI -38.88%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   50%  Ø=-0.15%  Compound=-25.55%
+    6h: n=142 (raw 162)  %pos=   46%  Ø=+0.10%  Compound=+3.24%
+   12h: n=129 (raw 162)  %pos=   43%  Ø=+0.24%  Compound=+16.55%
+   24h: n=107 (raw 162)  %pos=   52%  Ø=+0.42%  Compound=+19.72%
+   48h: n=84 (raw 162)  %pos=   51%  Ø=+1.32%  Compound=+95.97%
+   60h: n=79 (raw 161)  %pos=   54%  Ø=+2.02%  Compound=+172.71%
+    72: n=74 (raw 161)  %pos=   51%  Ø=+2.07%  Compound=+146.68%
+    78: n=71 (raw 161)  %pos=   48%  Ø=+2.27%  Compound=+159.20%
+    84: n=68 (raw 161)  %pos=   47%  Ø=+2.00%  Compound=+110.96%
+    90: n=67 (raw 161)  %pos=   49%  Ø=+2.34%  Compound=+140.36%
+   96h: n=67 (raw 161)  %pos=   46%  Ø=+2.40%  Compound=+133.92%
+  120h: n=59 (raw 161)  %pos=   44%  Ø=+1.60%  Compound=+26.79%
+  192h: n=44 (raw 161)  %pos=   43%  Ø=+1.51%  Compound=-15.82%
+
+  
+  COIN CAKEUSDT | UP | Buy nach SOL ≥ +2.0% / 60m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 162 Trades
+Buy&Hold über Zeitraum: 2025-03-01 00:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +28.56%
+========================================================================================================================
+    3h: n=155 (raw 162)  %pos=   48%  Ø=-0.20%  Compound=-28.53%
+    6h: n=142 (raw 162)  %pos=   54%  Ø=-0.07%  Compound=-12.53%
+   12h: n=129 (raw 162)  %pos=   50%  Ø=-0.12%  Compound=-18.85%
+   24h: n=107 (raw 162)  %pos=   50%  Ø=-0.23%  Compound=-27.86%
+   48h: n=84 (raw 162)  %pos=   54%  Ø=+0.87%  Compound=+73.82%
+   60h: n=79 (raw 161)  %pos=   56%  Ø=+1.26%  Compound=+113.09%
+    72: n=74 (raw 161)  %pos=   58%  Ø=+1.83%  Compound=+169.51%
+    78: n=71 (raw 161)  %pos=   58%  Ø=+2.36%  Compound=+283.98%  überhaupt nicht konsistent
+    84: n=68 (raw 161)  %pos=   54%  Ø=+2.09%  Compound=+199.80%
+    90: n=67 (raw 161)  %pos=   46%  Ø=+1.20%  Compound=+82.59%
+   96h: n=67 (raw 161)  %pos=   46%  Ø=+0.67%  Compound=+25.24%
+  120h: n=59 (raw 161)  %pos=   51%  Ø=+1.19%  Compound=+59.47%
+  192h: n=44 (raw 161)  %pos=   52%  Ø=+3.03%  Compound=+148.24%
+
+COIN 币安人生USDT | UP | Buy nach SOL ≥ +2.0% / 180m | Hold 3h, 6h, 12h, 24h, 48h, 60h, 72, 78, 84, 90, 96h, 120h, 192h | 402 Trades
+Buy&Hold über Zeitraum: 2026-01-07 15:00:00 CET → 2026-09-28 23:00:00 CEST | ROI +223.62%
+========================================================================================================================
+    3h: n=131 (raw 402)  %pos=   44%  Ø=-0.03%  Compound=-8.78%
+    6h: n=118 (raw 402)  %pos=   47%  Ø=-0.24%  Compound=-30.13%
+   12h: n=99 (raw 402)  %pos=   51%  Ø=+0.30%  Compound=+13.48%
+   24h: n=77 (raw 402)  %pos=   47%  Ø=+1.26%  Compound=+86.17%
+   48h: n=57 (raw 402)  %pos=   47%  Ø=+3.61%  Compound=+305.14%
+   60h: n=53 (raw 402)  %pos=   51%  Ø=+5.90%  Compound=+987.04%
+    72: n=48 (raw 401)  %pos=   52%  Ø=+6.06%  Compound=+713.19%
+    78: n=45 (raw 401)  %pos=   51%  Ø=+7.34%  Compound=+826.81%
+    84: n=43 (raw 401)  %pos=   49%  Ø=+5.54%  Compound=+344.85%
+    90: n=42 (raw 401)  %pos=   52%  Ø=+3.47%  Compound=+129.17%
+   96h: n=40 (raw 401)  %pos=   45%  Ø=+2.48%  Compound=+49.44%
+  120h: n=36 (raw 400)  %pos=   47%  Ø=+6.51%  Compound=+266.78%
+  192h: n=22 (raw 399)  %pos=   50%  Ø=+20.54%  Compound=+551.96%
+
+
+
+
+
+
+
+
+
 Order Flow:
 COIN XLMUSDT | BOTH | ETF net flow |≥| 500M USD @ 20:00 UTC | Hold 5m, 30m, 2h, 12h, 24h, 48h, 96h, 192h | 34 Trades
 Buy&Hold über Zeitraum: 2025-05-24 13:05:00 UTC → 2026-09-26 13:00:00 UTC | ROI -24.43%
@@ -542,3 +998,578 @@ Buy&Hold über Zeitraum: 2025-05-24 13:05:00 UTC → 2026-09-26 13:00:00 UTC | R
    96h: n=29/34 (used/raw)  %pos=   62%  Ø=+3.40%  Compound=+114.28%
   192h: n=22/33 (used/raw)  %pos=   45%  Ø=+3.07%  Compound=+58.86%
  LTC? ENA
+ 
+ 
+ Chatgpt 3 ref! (btc, sol, eth)
+Uni coinDOWN | Event 180m | -2% | Refs 2/3 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     448      52%      -0.10%       -45.79%     -70.51%
+     6h     404      53%      +0.08%        -2.31%     -27.03%
+    12h     350      54%      +0.26%       +58.55%     +33.83%
+    24h     287      55%      +0.76%      +408.30%    +383.57%
+    48h     212      53%      +0.70%      +121.08%     +96.36%
+    60h     191      53%      +0.94%      +195.44%    +170.72%
+    72h     175      55%      +1.65%      +637.01%    +612.29%
+    78h     160      52%      +1.60%      +442.61%    +417.88%
+    84h     155      50%      +1.15%      +126.73%    +102.01%
+    90h     149      48%      +1.31%      +141.33%    +116.61%
+    96h     147      48%      +1.03%       +70.97%     +46.25%
+   120h     126      52%      +1.42%      +127.21%    +102.49%
+   192h      94      49%      +1.18%       +19.21%      -5.51%
+   
+   passend dazu 2026:
+   DOWN | Event 180m | -2% | Refs 2/3 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h      94      53%      +0.02%        -0.01%     -61.17%
+     6h      85      55%      +0.10%        +5.91%     -55.25%
+    12h      75      53%      +0.28%       +17.92%     -43.23%
+    24h      61      59%      +0.33%       +16.07%     -45.09%
+    48h      47      55%      +1.36%       +69.54%      +8.39%
+    60h      41      61%      +1.84%       +90.61%     +29.45%
+    72h      38      63%      +2.98%      +158.98%     +97.82%
+    78h      37      57%      +2.46%      +114.14%     +52.98%
+    84h      35      57%      +1.70%       +55.67%      -5.49%
+    90h      33      52%      +2.20%       +77.52%     +16.36%
+    96h      33      45%      +1.14%       +26.02%     -35.14%
+   120h      31      52%      +2.08%       +64.61%      +3.45%
+   192h      23      52%      +2.65%       +44.99%     -16.17%
+
+
+Uni
+UP   | Event 60m | +2% | Refs 2/3 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     142      47%      +0.11%       +11.59%     -13.13%
+     6h     135      47%      +0.53%       +87.08%     +62.35%
+    12h     122      54%      +0.86%      +150.63%    +125.91%
+    24h     109      59%      +1.48%      +328.06%    +303.33%
+    48h      97      60%      +2.28%      +567.87%    +543.14%
+    60h      90      59%      +3.12%     +1039.46%   +1014.73%
+    72h      86      59%      +2.49%      +514.04%    +489.32%
+    78h      83      58%      +2.16%      +335.52%    +310.80%
+    84h      83      60%      +1.90%      +247.53%    +222.81%
+    90h      78      55%      +2.30%      +322.78%    +298.06%
+    96h      78      58%      +2.60%      +429.15%    +404.43%
+   120h      74      53%      +2.43%      +298.69%    +273.96%
+   192h      59      61%      +4.45%      +662.72%    +638.00%
+   
+   2025:
+   UP   | Event 60m | +2% | Refs 2/3 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h      51      45%      +0.48%       +25.20%     +78.53%
+     6h      48      46%      +0.62%       +31.20%     +84.52%
+    12h      45      58%      +0.94%       +45.64%     +98.97%
+    24h      40      58%      +0.89%       +37.51%     +90.84%
+    48h      36      53%      +1.64%       +63.57%    +116.90%
+    60h      33      58%      +3.30%      +167.08%    +220.41%
+    72h      32      59%      +2.30%       +85.96%    +139.28%
+    78h      31      55%      +1.90%       +58.13%    +111.46%
+    84h      31      58%      +1.42%       +36.58%     +89.90%
+    90h      29      52%      +1.81%       +48.17%    +101.50%
+    96h      29      59%      +2.33%       +78.58%    +131.91%
+   120h      27      48%      +1.78%       +41.11%     +94.43%
+   192h      23      61%      +3.36%       +70.18%    +123.51%
+
+
+uni
+DOWN | Event 360m | -2% | Refs ALL (3/3) | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     342      49%      -0.23%       -60.37%     -85.09%
+     6h     261      52%      -0.15%       -45.77%     -70.49%
+    12h     237      49%      +0.08%        -8.26%     -32.98%
+    24h     203      56%      +0.58%      +119.42%     +94.70%
+    48h     157      55%      +0.88%      +124.06%     +99.34%
+    60h     148      57%      +1.38%      +326.83%    +302.11%
+    72h     141      57%      +1.78%      +552.24%    +527.51%
+    78h     135      61%      +2.08%      +716.38%    +691.66%
+    84h     128      54%      +1.72%      +284.98%    +260.26%
+    90h     121      51%      +1.35%      +142.04%    +117.32%
+    96h     116      52%      +1.06%       +58.93%     +34.21%
+   120h     102      48%      +0.84%       +25.64%      +0.91%
+   192h      80      45%      +1.85%       +81.12%     +56.39%
+   
+   
+   BCH 2024 -26
+   UP   | Event 60m | +2% | Refs 2/3 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     142      45%      +0.06%        +5.86%     -12.29%
+     6h     135      53%      +0.31%       +46.05%     +27.90%
+    12h     122      54%      +0.69%      +117.19%     +99.04%
+    24h     109      56%      +0.88%      +135.47%    +117.32%
+    48h      97      56%      +1.99%      +427.65%    +409.50%
+    60h      90      52%      +2.43%      +561.76%    +543.60%
+    72h      86      53%      +2.14%      +362.05%    +343.90%
+    78h      83      55%      +2.25%      +384.00%    +365.85%
+    84h      83      51%      +2.06%      +289.15%    +271.00%
+    90h      78      53%      +2.77%      +503.60%    +485.45%
+    96h      78      56%      +3.09%      +653.46%    +635.31%
+   120h      74      58%      +2.98%      +470.28%    +452.13%
+   192h      59      53%      +4.31%      +643.10%    +624.94%
+   
+   konsistent über 2025 und 2026!
+   UP   | Event 60m | +2% | Refs 2/3 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h      37      41%      +0.18%        +6.44%     +55.17%
+     6h      34      62%      +0.83%       +31.48%     +80.21%
+    12h      31      61%      +0.80%       +26.84%     +75.57%
+    24h      28      57%      +1.42%       +45.21%     +93.94%
+    48h      27      48%      +1.98%       +47.49%     +96.22%
+    60h      24      42%      +1.98%       +39.84%     +88.57%
+    72h      22      36%      +0.01%        -6.37%     +42.36%
+    78h      21      48%      +0.54%        +4.94%     +53.67%
+    84h      21      43%      +0.34%        +0.90%     +49.63%
+    90h      20      45%      +1.28%       +20.62%     +69.35%
+    96h      20      50%      +2.42%       +46.70%     +95.43%
+   120h      20      60%      +2.02%       +28.80%     +77.53%
+   192h      15      27%      +1.58%        +8.95%     +57.68%
+   
+   UP   | Event 180m | +1% | Refs ALL (3/3) | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     690      42%      -0.04%       -33.49%     -51.64%
+     6h     622      45%      -0.04%       -35.37%     -53.53%
+    12h     512      47%      +0.10%       +22.02%      +3.87%
+    24h     394      48%      +0.13%        -0.69%     -18.84%
+    48h     277      45%      +0.45%       +82.14%     +63.99%
+    60h     245      48%      +0.56%      +106.39%     +88.24%
+    72h     211      48%      +1.03%      +348.67%    +330.52%
+    78h     203      51%      +0.79%      +145.40%    +127.25%
+    84h     194      49%      +0.75%      +104.48%     +86.33%
+    90h     186      49%      +0.99%      +207.79%    +189.64%
+    96h     173      47%      +1.11%      +236.73%    +218.58%
+   120h     145      52%      +1.33%      +219.80%    +201.65%
+   192h     101      53%      +1.77%      +194.99%    +176.84%
+   
+   Pepe
+   UP   | Event 60m | +1% | Refs ALL (3/3) | Target PEPEUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     358      47%      +0.08%       +12.85%    -228.18%
+     6h     329      52%      +0.40%      +183.18%     -57.85%
+    12h     295      49%      +0.65%      +314.79%     +73.77%
+    24h     244      50%      +1.01%      +490.06%    +249.04%
+    48h     189      51%      +1.87%      +810.84%    +569.82%
+    60h     170      49%      +2.30%     +1047.45%    +806.43%
+    72h     156      50%      +2.40%     +1075.05%    +834.02%
+    78h     150      50%      +2.02%      +489.48%    +248.45%
+    84h     143      48%      +2.52%      +728.06%    +487.03%
+    90h     138      48%      +2.62%      +636.44%    +395.42%
+    96h     134      49%      +2.82%      +507.35%    +266.32%
+   120h     118      50%      +3.85%     +1178.63%    +937.60%
+   192h      85      46%      +5.94%     +1365.91%   +1124.88%
+   
+   
+   REF BTC, BNB, XRP
+   
+   UP   | Event 60m | +2% | Refs ANY (1/3) | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     431      48%      -0.14%       -51.79%     -77.04%
+     6h     376      47%      +0.19%       +63.33%     +38.08%
+    12h     309      50%      +0.51%      +250.09%    +224.84%
+    24h     244      48%      +0.59%      +149.19%    +123.95%
+    48h     183      55%      +1.44%      +707.35%    +682.10%
+    60h     162      55%      +1.66%      +665.07%    +639.82%
+    72h     150      52%      +1.61%      +440.95%    +415.70%
+    78h     144      50%      +1.43%      +272.06%    +246.81%
+    84h     136      51%      +1.27%      +180.89%    +155.64%
+    90h     128      54%      +1.92%      +433.42%    +408.18%
+    96h     126      56%      +2.57%     +1074.63%   +1049.39%
+   120h     109      54%      +2.53%      +578.79%    +553.54%
+   192h      81      52%      +2.34%      +139.20%    +113.95%
+   
+   BCH
+   UP   | Event 60m | +1% | Refs ALL (3/3) | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     227      45%      -0.01%        -5.38%     -23.03%
+     6h     211      48%      +0.06%        +2.93%     -14.72%
+    12h     189      52%      +0.26%       +40.97%     +23.31%
+    24h     160      50%      +0.38%       +57.01%     +39.36%
+    48h     133      51%      +1.29%      +293.47%    +275.82%
+    60h     120      54%      +1.93%      +575.41%    +557.75%
+    72h     110      55%      +1.44%      +222.75%    +205.10%
+    78h     109      51%      +1.17%      +130.66%    +113.01%
+    84h     107      50%      +1.29%      +137.34%    +119.69%
+    90h     104      51%      +1.45%      +172.71%    +155.06%
+    96h     103      56%      +2.14%      +409.07%    +391.42%
+   120h      95      57%      +2.69%      +618.86%    +601.20%
+   192h      71      48%      +2.79%      +279.00%    +261.35%
+   
+   UP   | Event 60m | +2% | Refs ANY (1/3) | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     431      43%      -0.02%       -18.35%     -36.00%
+     6h     376      49%      +0.11%       +27.79%     +10.14%
+    12h     309      54%      +0.54%      +314.52%    +296.87%
+    24h     244      50%      +0.65%      +221.93%    +204.28%
+    48h     183      51%      +1.31%      +549.94%    +532.28%
+    60h     162      46%      +1.28%      +397.65%    +380.00%
+    72h     150      50%      +1.22%      +284.48%    +266.83%
+    78h     144      50%      +0.69%       +67.24%     +49.58%
+    84h     136      53%      +0.72%       +51.92%     +34.27%
+    90h     128      53%      +1.20%      +174.19%    +156.54%
+    96h     126      56%      +1.87%      +485.00%    +467.35%
+   120h     109      59%      +2.70%      +819.18%    +801.53%
+   192h      81      51%      +1.70%       +94.84%     +77.19%
+
+REF BTC, BNB, XRP, ETH
+
+DOWN | Event 60m | -1% | Refs 2/4 | Target TAOUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     740      52%      +0.21%      +234.23%    +290.20%
+     6h     623      51%      +0.33%      +392.52%    +448.49%
+    12h     502      50%      +0.34%      +178.96%    +234.94%
+    24h     375      48%      +0.35%       +61.82%    +117.79%
+    48h     255      47%      +0.14%       -38.13%     +17.85%
+    60h     221      48%      +0.53%       +25.55%     +81.52%
+    72h     199      49%      +0.83%       +72.41%    +128.39%
+    78h     185      48%      +0.79%       +43.17%     +99.15%
+    84h     175      45%      +0.57%       -14.13%     +41.85%
+    90h     167      46%      +0.52%       -22.72%     +33.26%
+    96h     161      47%      +0.41%       -34.55%     +21.43%
+   120h     134      49%      +0.77%        -8.73%     +47.25%
+   192h      90      47%      +0.22%       -65.35%      -9.37%
+   
+   UP   | Event 60m | +2% | Refs 2/4 | Target TAOUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     123      53%      +0.45%       +62.82%    +118.80%
+     6h     114      54%      +0.73%      +107.98%    +163.96%
+    12h     105      51%      +0.79%       +96.52%    +152.50%
+    24h      91      49%      +1.42%      +168.04%    +224.02%
+    48h      79      59%      +3.46%      +835.99%    +891.96%
+    60h      75      57%      +2.27%      +217.63%    +273.61%
+    72h      70      51%      +1.49%       +62.66%    +118.64%
+    78h      67      52%      +2.42%      +186.67%    +242.65%
+    84h      66      55%      +2.30%      +148.83%    +204.81%
+    90h      62      55%      +3.44%      +346.67%    +402.65%
+    96h      62      50%      +2.99%      +239.03%    +295.01%
+   120h      58      55%      +4.17%      +443.83%    +499.81%
+   192h      47      55%      +2.58%       +57.18%    +113.16%
+   
+   UP   | Event 60m | +2% | Refs 2/4 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     136      45%      -0.10%       -16.25%     -41.60%
+     6h     126      46%      +0.47%       +66.48%     +41.12%
+    12h     114      53%      +0.80%      +116.90%     +91.54%
+    24h      98      62%      +1.71%      +350.28%    +324.92%
+    48h      86      63%      +2.88%      +796.84%    +771.48%
+    60h      82      62%      +3.32%      +967.35%    +941.99%
+    72h      77      62%      +3.10%      +705.40%    +680.04%
+    78h      74      61%      +3.30%      +758.43%    +733.07%
+    84h      73      67%      +3.28%      +749.31%    +723.95%
+    90h      70      66%      +3.76%      +942.10%    +916.75%
+    96h      70      64%      +3.89%      +995.43%    +970.07%
+   120h      65      60%      +4.29%     +1006.93%    +981.57%
+   192h      51      65%      +5.54%      +906.39%    +881.03%
+
+UP   | Event 60m | +2% | Refs 2/4 | Target SOLUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     136      49%      -0.04%        -8.56%     -24.31%
+     6h     126      47%      +0.23%       +26.15%     +10.40%
+    12h     114      50%      +0.37%       +44.04%     +28.29%
+    24h      98      59%      +1.17%      +176.72%    +160.96%
+    48h      86      63%      +1.68%      +245.39%    +229.64%
+    60h      82      57%      +1.85%      +261.51%    +245.75%
+    72h      77      57%      +1.99%      +262.05%    +246.30%
+    78h      74      59%      +2.16%      +285.95%    +270.19%  kleinere Gains aber konsistent?
+    84h      73      59%      +2.24%      +300.45%    +284.70%
+    90h      70      51%      +2.65%      +388.23%    +372.48%
+    96h      70      46%      +2.44%      +313.07%    +297.32%
+   120h      65      52%      +2.84%      +368.78%    +353.03%
+   192h      51      55%      +3.87%      +393.50%    +377.75%
+
+UP   | Event 60m | +2% | Refs 2/4 | Target PEPEUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     136      47%      +0.03%        -3.67%    -243.16%
+     6h     126      55%      +0.62%       +95.84%    -143.65%
+    12h     114      47%      +0.69%       +81.88%    -157.61%
+    24h      98      54%      +1.61%      +237.95%      -1.54%
+    48h      86      55%      +2.57%      +436.92%    +197.43%
+    60h      82      55%      +2.72%      +434.25%    +194.76%
+    72h      77      60%      +3.46%      +684.31%    +444.82%
+    78h      74      53%      +3.97%      +815.70%    +576.21%
+    84h      73      51%      +3.88%      +773.04%    +533.55%
+    90h      70      50%      +4.75%     +1130.94%    +891.45%
+    96h      70      50%      +4.37%      +823.20%    +583.71%
+   120h      65      52%      +5.87%     +1147.44%    +907.95%
+   192h      51      57%      +6.05%      +425.36%    +185.87%
+
+UP   | Event 60m | +2% | Refs 2/4 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     136      43%      -0.06%       -10.77%     -29.30%
+     6h     126      52%      +0.22%       +27.31%      +8.78%
+    12h     114      52%      +0.46%       +56.26%     +37.72%
+    24h      98      58%      +1.14%      +171.24%    +152.71%
+    48h      86      62%      +2.55%      +584.48%    +565.95%
+    60h      82      60%      +3.00%      +743.07%    +724.53%
+    72h      77      58%      +3.05%      +650.88%    +632.34%
+    78h      74      59%      +3.16%      +666.03%    +647.50%
+    84h      73      58%      +3.44%      +756.44%    +737.90%
+    90h      70      60%      +3.90%      +977.74%    +959.21%
+    96h      70      60%      +4.02%     +1039.16%   +1020.63%
+   120h      65      66%      +5.30%     +1834.94%   +1816.40%
+   192h      51      55%      +5.78%     +1033.79%   +1015.26%
+   
+   UP   | Event 60m | +2% | Refs 2/3 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     142      45%      +0.06%        +5.86%     -12.64%
+     6h     135      53%      +0.31%       +46.05%     +27.55%
+    12h     122      54%      +0.69%      +117.19%     +98.70%
+    24h     109      56%      +0.88%      +135.47%    +116.98%
+    48h      97      56%      +1.99%      +427.65%    +409.15%
+    60h      90      52%      +2.43%      +561.76%    +543.26%
+    72h      86      53%      +2.14%      +362.05%    +343.55%
+    78h      83      55%      +2.25%      +384.00%    +365.50%
+    84h      83      51%      +2.06%      +289.15%    +270.66%
+    90h      78      53%      +2.77%      +503.60%    +485.10%
+    96h      78      56%      +3.09%      +653.46%    +634.96%
+   120h      74      58%      +2.98%      +470.28%    +451.79%
+   192h      59      53%      +4.31%      +643.10%    +624.60%
+
+
+2026 bis heute
+UP   | Event 60m | +2% | Refs 2/4 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h      33      36%      -0.33%       -10.95%     +37.80%
+     6h      28      61%      +0.57%       +16.71%     +65.46%
+    12h      26      58%      +0.30%        +6.39%     +55.14%
+    24h      23      57%      +1.22%       +28.84%     +77.59%
+    48h      22      50%      +2.63%       +54.10%    +102.85%
+    60h      20      45%      +2.01%       +28.10%     +76.85%
+    72h      18      39%      -0.36%       -13.80%     +34.95%
+    78h      17      47%      -0.03%        -7.53%     +41.23%
+    84h      17      47%      +0.28%        -2.11%     +46.64%
+    90h      17      41%      +0.65%        +3.72%     +52.47%
+    96h      17      35%      +1.34%       +13.57%     +62.32%
+   120h      16      50%      +3.15%       +44.48%     +93.23%
+   192h      13      23%      +2.49%       +20.82%     +69.57%
+   
+   
+   REFS: BNB, ETH, BCH, XRP
+   UP   | Event 60m | +2% | Refs 2/4 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     102      48%      +0.11%        +8.87%     +40.90%
+     6h      92      47%      +0.33%       +29.20%     +61.23%
+    12h      86      56%      +0.74%       +72.98%    +105.00%
+    24h      75      52%      +0.58%       +38.81%     +70.83%
+    48h      64      55%      +1.70%      +136.95%    +168.98%
+    60h      59      53%      +2.25%      +175.13%    +207.16%
+    72h      55      56%      +2.26%      +165.69%    +197.72%
+    78h      53      55%      +2.20%      +154.84%    +186.86%
+    84h      52      60%      +2.30%      +166.00%    +198.03%
+    90h      51      57%      +2.52%      +186.10%    +218.13%
+    96h      50      54%      +2.45%      +161.64%    +193.66%
+   120h      43      49%      +1.67%       +62.33%     +94.36%
+   192h      35      43%      +1.54%       +19.10%     +51.13%
+
+B&H: -32.03% | 2025-01-01 00:00:00 CET -> 2026-10-02 05:00:00 CEST
+Events raw: 116 | Non-overlap je Hold separat
+
+Ref: BTC, ETH, SOL, XRP
+UP   | Event 60m | +2% | Refs 2/4 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     374      47%      +0.01%       -10.48%     +36.23%
+     6h     342      48%      +0.07%        +0.65%     +47.36%
+    12h     296      50%      +0.36%       +93.03%    +139.74%
+    24h     248      56%      +0.96%      +580.11%    +626.82%
+    48h     205      58%      +1.78%     +1885.30%   +1932.01%
+    60h     193      58%      +1.98%     +1924.27%   +1970.98%
+    72h     183      56%      +1.61%      +826.36%    +873.07%
+    78h     175      54%      +1.36%      +416.22%    +462.93%
+    84h     170      59%      +1.76%      +859.96%    +906.67%
+    90h     166      59%      +1.77%      +812.33%    +859.04%
+    96h     165      59%      +1.99%     +1079.91%   +1126.62%
+   120h     149      56%      +1.93%      +613.87%    +660.58%
+   192h     113      53%      +1.88%      +200.49%    +247.20%
+   
+   UP   | Event 180m | +2% | Refs 3/4 | Target PEPEUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     320      45%      -0.18%       -51.53%     -90.09%
+     6h     291      50%      +0.18%       +27.92%     -10.63%
+    12h     257      47%      +0.50%      +128.14%     +89.58%
+    24h     224      46%      +0.35%        +2.34%     -36.21%
+    48h     180      48%      +1.79%      +416.24%    +377.68%
+    60h     164      48%      +2.33%      +798.68%    +760.12%
+    72h     151      50%      +2.90%     +1423.40%   +1384.84%
+    78h     148      49%      +2.78%     +1056.44%   +1017.88%
+    84h     145      47%      +2.61%      +640.58%    +602.03%
+    90h     142      44%      +2.19%      +258.61%    +220.05%
+    96h     136      46%      +2.55%      +253.94%    +215.39%
+   120h     120      47%      +3.20%      +418.04%    +379.49%
+   192h      93      44%      +5.26%      +141.74%    +103.19%
+   
+   UP   | Event 60m | +2% | Refs 2/4 | Target BCHUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     374      45%      -0.16%       -50.85%     -23.80%
+     6h     342      47%      -0.15%       -47.45%     -20.40%
+    12h     296      46%      -0.06%       -35.56%      -8.51%
+    24h     248      56%      +0.38%       +88.48%    +115.53%
+    48h     205      53%      +0.96%      +338.93%    +365.98%
+    60h     193      53%      +1.14%      +407.21%    +434.26%
+    72h     183      52%      +1.31%      +486.32%    +513.37%   
+    78h     175      53%      +1.08%      +254.35%    +281.40%
+    84h     170      55%      +1.59%      +664.07%    +691.13%
+    90h     166      54%      +1.42%      +444.70%    +471.75%
+    96h     165      56%      +1.67%      +625.15%    +652.20%   bch sehr konsistent!
+   120h     149      54%      +1.34%      +231.25%    +258.30%
+   192h     113      47%      +1.86%      +188.10%    +215.15%
+
+
+Refs: BTC, ETH, SOL, XRP, BNB
+UP   | Event 60m | +2% | Refs 2/5 | Target UNIUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     399      47%      -0.03%       -23.94%     +22.60%
+     6h     364      46%      +0.01%       -19.93%     +26.60%
+    12h     317      49%      +0.27%       +51.59%     +98.12%
+    24h     266      56%      +0.81%      +405.83%    +452.37%
+    48h     216      56%      +1.57%     +1384.77%   +1431.30%
+    60h     202      58%      +1.75%     +1329.49%   +1376.02%
+    72h     190      56%      +1.40%      +537.28%    +583.82%
+    78h     182      54%      +1.15%      +233.77%    +280.30%
+    84h     177      58%      +1.41%      +425.54%    +472.07%
+    90h     173      57%      +1.45%      +433.59%    +480.12%
+    96h     171      58%      +1.75%      +697.10%    +743.63%
+   120h     153      57%      +1.76%      +470.82%    +517.35%
+   192h     117      54%      +1.20%       +37.10%     +83.63%
+
+DOWN | Event 180m | -2% | Refs 3/5 | Target AAVEUSDT   since 2023
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     471      53%      +0.10%       +31.74%    -214.41%
+     6h     430      53%      +0.22%       +97.18%    -148.98%
+    12h     378      54%      +0.42%      +228.00%     -18.15%
+    24h     313      58%      +1.01%     +1262.59%   +1016.44%
+    48h     238      53%      +1.02%      +460.70%    +214.54%
+    60h     215      52%      +1.19%      +531.13%    +284.98%
+    72h     201      56%      +1.83%     +1555.96%   +1309.81%
+    78h     193      54%      +1.92%     +1593.33%   +1347.18%
+    84h     187      53%      +1.91%     +1315.44%   +1069.28%
+    90h     184      51%      +1.63%      +714.66%    +468.51%
+    96h     177      52%      +1.70%      +716.33%    +470.17%
+   120h     151      48%      +1.38%      +224.82%     -21.33%
+   192h     113      50%      +1.61%      +131.91%    -114.25%
+
+
+B&H: +247.34% | 2023-01-01 00:00 CET -> 2026-10-03 11:00 CEST
+Events raw: 597 | Non-overlap je Hold separat
+refs SOL, BTC, ETH, XRP
+======================================================================================================================
+DOWN | Event 180m | -2% | Refs 3/4 | Target AAVEUSDT
+======================================================================================================================
+   Hold       n     %pos       Ø ROI      Compound      vs B&H
+--------------------------------------------------------------
+     3h     413      54%      +0.13%       +44.82%    -202.53%
+     6h     381      54%      +0.26%      +107.60%    -139.74%
+    12h     341      55%      +0.46%      +232.65%     -14.69%
+    24h     284      58%      +1.06%     +1076.18%    +828.84%
+    48h     220      54%      +1.07%      +442.34%    +195.00%
+    60h     204      54%      +1.72%     +1503.79%   +1256.45%
+    72h     191      55%      +2.15%     +2490.06%   +2242.72%
+    78h     185      56%      +2.23%     +2539.53%   +2292.19%
+    84h     180      54%      +2.03%     +1522.32%   +1274.98%
+    90h     176      52%      +1.83%      +958.14%    +710.80%
+    96h     169      51%      +1.57%      +495.15%    +247.80%
+   120h     145      48%      +1.30%      +189.86%     -57.48%
+   192h     108      49%      +1.92%      +199.01%     -48.34%
+
+
+
+Chatgpt Median Script:
+BTC, BNB, XRP
+AVG     | Event 180m | +2% | Target UNI
+==============================================================================================================
+  Hold        n     %pos       Ø ROI     Compound      vs B&H
+--------------------------------------------------------------------------------------------------------------
+    3h      604  +51.16%      -0.07%      -48.77%     -73.70%
+    6h      512  +53.12%      +0.05%      -10.79%     -35.72%
+   12h      422  +48.82%      +0.19%      +36.86%     +11.93%
+   24h      320  +52.50%      +0.57%     +225.54%    +200.61%
+   48h      230  +53.48%      +0.69%     +170.60%    +145.67%
+   72h      190  +51.58%      +1.46%     +541.19%    +516.26%
+   96h      151  +52.32%      +1.88%     +471.99%    +447.06%
+  120h      129  +48.84%      +1.67%     +237.56%    +212.63%
+  192h       93  +49.46%      +2.07%     +117.26%     +92.33%
+
+AVG     | Event 360m | +3% | Target UNI
+==============================================================================================================
+  Hold        n     %pos       Ø ROI     Compound      vs B&H
+--------------------------------------------------------------------------------------------------------------
+    3h      363  +47.38%      -0.03%      -21.93%     -46.66%
+    6h      322  +53.42%      +0.19%      +47.56%     +22.84%
+   12h      269  +55.39%      +0.68%     +354.61%    +329.89%
+   24h      215  +55.81%      +0.79%     +265.38%    +240.65%
+   48h      161  +58.39%      +0.72%     +100.52%     +75.80%
+   72h      139  +53.96%      +2.05%     +874.65%    +849.93%
+   96h      117  +52.14%      +1.51%     +202.52%    +177.80%
+  120h      105  +50.48%      +1.85%     +219.08%    +194.35%
+  192h       75  +49.33%      +1.76%      +93.38%     +68.66%
+
+
+Chatgpt ALT Laggard
+UP | Event 30m | +1.0% | ALL Refs
+======================================================================================================================
+Berechne UP | 30m | 1.0%...
+  Raw Events: 498
+
+  Hold   Trades      Win%      Ø Event       Median      Compound      vs B&H       Best      Worst
+----------------------------------------------------------------------------------------------------------------------
+    3h      324     52.78%        0.04%        0.04%         8.69%    -237.50%     12.14%    -10.48%
+    6h      290     53.79%        0.17%        0.12%        50.19%    -196.01%      9.33%     -9.20%
+   12h      255     51.76%        0.22%        0.20%        55.99%    -190.20%     13.77%    -13.25%
+   24h      217     53.92%        0.32%        0.33%        65.89%    -180.31%     12.94%    -15.18%
+   48h      174     55.17%        0.84%        0.62%       226.74%     -19.46%     22.78%    -14.06%
+   60h      156     51.92%        0.67%        0.24%       113.69%    -132.50%     21.10%    -20.77%
+   72h      142     50.70%        0.47%        0.12%        52.44%    -193.75%     18.39%    -13.80%
+   78h      136     51.47%        0.44%        0.36%        40.68%    -205.52%     22.40%    -17.86%
+   84h      133     51.88%        0.52%        0.27%        46.86%    -199.34%     30.61%    -19.61%
+   90h      124     53.23%        0.85%        0.68%       117.62%    -128.57%     22.78%    -16.27%
+   96h      122     54.92%        1.20%        1.20%       209.15%     -37.04%     30.06%    -16.27%
+  120h      104     52.88%        1.58%        1.05%       262.46%      16.26%     36.52%    -18.50%
+  192h       81     59.26%        3.81%        1.45%      1215.33%     969.14%     63.07%    -15.97%
+

@@ -100,10 +100,11 @@ HOLD_HORIZONS: Dict[str, int] = {
     "90h": 5400,
     "96h": 5760,
     "120h": 7200,
+    "168h": 10080,
     "192h": 11520,
 }
 
-FROM_DATE: Optional[str] = "2025-01-01"
+FROM_DATE: Optional[str] = "2024-01-01"
 TO_DATE: Optional[str] = "2026-12-28"
 LOOKBACK_DAYS = 400
 

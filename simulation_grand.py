@@ -456,7 +456,7 @@ def main():
         "INIT/USDT",
     ]
 
-    start_date_str = "2026-05-10"
+    start_date_str = "2025-05-10"
     end_date_str = "2026-10-01"
     interval_hours = 12
     fee_rate = 0.00075  # 0.10% Spot-Taker; nicht 0.02%

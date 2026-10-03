@@ -440,14 +440,14 @@ def main():
     exchange = ccxt.binance()
 
     top_200_symbols = [
-        "NEXO/USDT"
+        "SOL/USDT"
     ]
 
-    start_date_str = "2025-05-15"
+    start_date_str = "2026-03-15"
     end_date_str = "2026-10-01"
     print(start_date_str," - ",end_date_str)
     interval_hours = 12
-    lookback_days = 100  # Offset jeden Tag neu aus den letzten N Tagen
+    lookback_days = 30  # Offset jeden Tag neu aus den letzten N Tagen
     fee_rate = 0.00075  # 0.075% Spot-Taker
     initial_capital = 10000.0
     offsets_to_test = list(range(24))

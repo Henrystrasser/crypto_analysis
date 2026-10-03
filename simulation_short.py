@@ -1,5 +1,6 @@
 from zoneinfo import ZoneInfo
 
+
 import ccxt
 import pandas as pd
 
@@ -62,98 +63,71 @@ def custom_sell_condition(row, portfolio_state):
     return True
 
 
-def _apply_long(cash, price_buy, price_sell, fee_rate):
-    """100% long: kaufen zu price_buy, verkaufen zu price_sell."""
-    effective_cash = cash * (1 - fee_rate)
-    crypto = effective_cash / price_buy
-    gross_cash = crypto * price_sell
-    return gross_cash * (1 - fee_rate)
-
-
-def _apply_short(cash, price_open, price_close, fee_rate):
-    """
-    100% short: öffnen zu price_open, schließen zu price_close.
-    Spiegelbild zur Long-Gebührenlogik:
-        cash * (price_open / price_close) * (1 - fee)^2
-    Preis fällt -> Gewinn, Preis steigt -> Verlust.
-    """
-    effective_cash = cash * (1 - fee_rate)
-    size = effective_cash / price_open
-    # Rückkauf der Short-Größe; Restkapital = 2*effective - cover, danach Fee auf den Close
-    cover_cost = size * price_close
-    residual = effective_cash + (effective_cash - cover_cost)
-    return residual * (1 - fee_rate)
-
-
 def run_simulation(results_df, fee_rate=0.0, initial_cash=10000.0):
     """
-    Pro Zeile:
-      Long  von Date_Buy/Time_Buy  (Offset)      bis Date_Sell/Time_Sell (Offset+12)
-      Short von Date_Sell/Time_Sell (Offset+12)  bis zum Price_Buy der *nächsten* Zeile
-            (das sind die anderen 12 Stunden bis zum nächsten Offset)
-
-    Letzte Zeile: nur noch Long, kein offener Short ohne Cover-Preis.
+    Short-Simulation (1x):
+    - Entry zur Buy-Zeit: Short oeffnen (gleiche Nominalgroesse wie Long-Cash)
+    - Exit zur Sell-Zeit: Short closen (Cover)
+    Gebuehren analog zum Long-Skript: je Trade fee_rate auf das Nominal.
     """
     cash = initial_cash
+    short_qty = 0.0
+    entry_price = 0.0
+    position_open = False
     trade_log = []
 
-    n = len(results_df)
-    for i in range(n):
+    for i in range(len(results_df)):
         row = results_df.iloc[i]
-        price_buy = float(row["Price_Buy"])
-        price_sell = float(row["Price_Sell"])
-        time_buy = f"{row['Date_Buy']} {row['Time_Buy']}"
-        time_sell = f"{row['Date_Sell']} {row['Time_Sell']}"
 
-        # --- LONG 12h ---
-        if custom_buy_condition(row, {"cash": cash}):
-            cash_before = cash
-            cash = _apply_long(cash, price_buy, price_sell, fee_rate)
+        price_open = row["Price_Buy"]
+        time_open = f"{row['Date_Buy']} {row['Time_Buy']}"
+
+        if not position_open and custom_buy_condition(row, {"cash": cash}):
+            short_qty = cash / price_open
+            cash = cash - (short_qty * price_open * fee_rate)
+            entry_price = price_open
+            position_open = True
             trade_log.append(
                 {
-                    "Time": time_buy,
-                    "Action": "LONG_OPEN",
-                    "Price": price_buy,
-                    "Cash": cash_before,
-                }
-            )
-            trade_log.append(
-                {
-                    "Time": time_sell,
-                    "Action": "LONG_CLOSE",
-                    "Price": price_sell,
+                    "Time": time_open,
+                    "Action": "SHORT",
+                    "Price": price_open,
                     "Cash": cash,
+                    "ShortQty": short_qty,
                 }
             )
 
-        # --- SHORT 12h bis zum nächsten Offset ---
-        if i + 1 < n and custom_sell_condition(row, {"cash": cash}):
-            next_row = results_df.iloc[i + 1]
-            price_cover = float(next_row["Price_Buy"])
-            time_cover = f"{next_row['Date_Buy']} {next_row['Time_Buy']}"
-            cash_before = cash
-            cash = _apply_short(cash, price_sell, price_cover, fee_rate)
+        price_close = row["Price_Sell"]
+        time_close = f"{row['Date_Sell']} {row['Time_Sell']}"
+
+        if position_open and custom_sell_condition(row, {"short_qty": short_qty}):
+            pnl = short_qty * (entry_price - price_close)
+            close_fee = short_qty * price_close * fee_rate
+            cash = cash + pnl - close_fee
+            short_qty = 0.0
+            entry_price = 0.0
+            position_open = False
             trade_log.append(
                 {
-                    "Time": time_sell,
-                    "Action": "SHORT_OPEN",
-                    "Price": price_sell,
-                    "Cash": cash_before,
-                }
-            )
-            trade_log.append(
-                {
-                    "Time": time_cover,
-                    "Action": "SHORT_CLOSE",
-                    "Price": price_cover,
+                    "Time": time_close,
+                    "Action": "COVER",
+                    "Price": price_close,
                     "Cash": cash,
+                    "ShortQty": short_qty,
                 }
             )
 
-    return cash, pd.DataFrame(trade_log)
+    final_value = cash
+    if position_open:
+        last_price = results_df.iloc[-1]["Price_Sell"]
+        pnl = short_qty * (entry_price - last_price)
+        close_fee = short_qty * last_price * fee_rate
+        final_value = cash + pnl - close_fee
+
+    return final_value, pd.DataFrame(trade_log)
 
 
-def buy_and_hold_roi(df, start_date_str, end_date_str, fee_rate):
+def short_and_hold_roi(df, start_date_str, end_date_str, fee_rate):
     window = df.copy()
     if start_date_str:
         window = window[window.index >= pd.Timestamp(start_date_str).tz_localize(BERLIN)]
@@ -167,16 +141,16 @@ def buy_and_hold_roi(df, start_date_str, end_date_str, fee_rate):
 
     first = float(window.iloc[0]["close"])
     last = float(window.iloc[-1]["close"])
-    # gleiche Gebühr wie ein einmaliger Long: kaufen + verkaufen
-    return ((last / first) * (1 - fee_rate) ** 2 - 1.0) * 100
+    # Short-and-Hold: zuerst verkaufen, spaeter zurueckkaufen; zwei Gebuehren
+    return ((first / last) * (1 - fee_rate) ** 2 - 1.0) * 100
 
 
 def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_date_str):
     results = []
     dates = df["date"].unique()
     for d in dates:
-        # Kauf = Berliner Ortszeit offset_hours:00 am Berliner Tag d (DST siehe
-        # berlin_wallclock); Verkauf = Kauf + interval_hours echte Stunden.
+        # Entry = Berliner Ortszeit offset_hours:00 am Berliner Tag d (DST siehe
+        # berlin_wallclock); Cover = Entry + interval_hours echte Stunden.
         current_dt = berlin_wallclock(d, offset_hours)
         if current_dt is None:
             continue
@@ -204,10 +178,10 @@ def generate_result_df(df, offset_hours, interval_hours, start_date_str, end_dat
 
 def main():
     exchange = ccxt.binance()
-    temp_symbol = "BTC/USDT"
+    temp_symbol = "UNI/USDT"
 
-    start_date_str = "2023-02-01"
-    end_date_str = "2027-10-30"
+    start_date_str = "2026-08-20"
+    end_date_str = "2026-10-15"
     interval_hours = 12
     fee_rate = 0.00075
     initial_capital = 10000.0
@@ -216,7 +190,8 @@ def main():
     offsets_to_test = list(range(24))
 
     since_timestamp = (
-        int(pd.Timestamp(start_date_str).tz_localize(BERLIN).timestamp() * 1000) - 48 * 60 * 60 * 1000
+        int(pd.Timestamp(start_date_str).tz_localize(BERLIN).timestamp() * 1000)
+        - 48 * 60 * 60 * 1000
     )
 
     print(f"Lade {temp_symbol} ab {start_date_str}...")
@@ -234,16 +209,16 @@ def main():
     # Handelstag = Berliner Kalenderdatum (Tagesgrenze = Mitternacht Berlin)
     df["date"] = df.index.date
 
-    hold_roi = buy_and_hold_roi(df, start_date_str, end_date_str, fee_rate)
+    hold_roi = short_and_hold_roi(df, start_date_str, end_date_str, fee_rate)
     if hold_roi is None:
-        print("Keine Daten für Buy-and-Hold.")
+        print("Keine Daten fuer Short-and-Hold.")
         return
 
     if COMPARE_OFFSETS:
         print(
-            f"\n{temp_symbol}  {start_date_str} → {end_date_str}  "
-            f"Hold ROI: {hold_roi:+.2f}%  |  Long {interval_hours}h + Short {interval_hours}h"
-            "  | Uhrzeiten = deutsche Zeit (Europe/Berlin, CET/CEST)\n"
+            f"\n{temp_symbol}  SHORT  {start_date_str} → {end_date_str}  "
+            f"Short-Hold ROI: {hold_roi:+.2f}%"
+            "  | Entry/Cover = deutsche Zeit (Europe/Berlin, CET/CEST)\n"
         )
         rows = []
 
@@ -261,8 +236,8 @@ def main():
             sell_hour = (offset + interval_hours) % 24
             rows.append(
                 {
-                    "Long von": f"{offset:02d}:00",
-                    "Short von": f"{sell_hour:02d}:00",
+                    "Short": f"{offset:02d}:00",
+                    "Cover": f"{sell_hour:02d}:00",
                     "ROI %": strat_roi,
                     "Hold ROI %": hold_roi,
                     "vs Hold": strat_roi - hold_roi,
@@ -279,7 +254,7 @@ def main():
             df, offset_hours, interval_hours, start_date_str, end_date_str
         )
         if result_df.empty:
-            print("Keine Daten im gewählten Datumsbereich.")
+            print("Keine Daten im gewaehlten Datumsbereich.")
             return
 
         final_val, _ = run_simulation(
@@ -287,8 +262,8 @@ def main():
         )
         strat_roi = (final_val / initial_capital - 1.0) * 100
         print(
-            f"{temp_symbol} Offset {offset_hours:02d}:00  "
-            f"ROI {strat_roi:+.2f}%  Hold {hold_roi:+.2f}%  "
+            f"{temp_symbol} SHORT Offset {offset_hours:02d}:00  "
+            f"ROI {strat_roi:+.2f}%  Short-Hold {hold_roi:+.2f}%  "
             f"vs Hold {strat_roi - hold_roi:+.2f}%"
         )
 
