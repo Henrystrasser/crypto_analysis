@@ -64,8 +64,8 @@ import requests
 # --- Strategie / Event ---
 # Referenz-Coin für UP/DOWN-Events — hier in VS Code ändern; CLI --ref ist ein optionaler Override.
 # Base z.B. "BTC"/"ETH" oder Pair "ETHUSDT"
-REF_SYMBOL = "BTC"
-BTC_RISE_WINDOW_MIN = 60
+REF_SYMBOL = "XRP"
+BTC_RISE_WINDOW_MIN = 360
 BTC_RISE_THRESHOLD_PCT = 2.0
 USE_THRESHOLD_CROSSING = True
 RANDOM_SEED = 42  # reproduzierbare Zufalls-Käufe
@@ -76,7 +76,6 @@ RUN_RANDOM = False
 
 # Hold-Horizonte ab Kauf (Fensterende)
 HOLD_HORIZONS: Dict[str, int] = {
-    "3h": 180,
     "6h": 360,
     "12h": 720,
     "24h": 1440,

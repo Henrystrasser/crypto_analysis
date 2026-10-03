@@ -69,11 +69,11 @@ import requests
 # Base z.B. "BTC"/"ETH" oder Pair "ETHUSDT"
 # Referenz = Event-Trigger; Ziel = der eine Coin zum Vergleich (Korrelation/Tendenz)
 REF_SYMBOL = "BTC"
-TARGET_SYMBOL = "TRX"  # Base oder Pair, z.B. "ETH" / "ETHUSDT"
-FROM_DATE: Optional[str] = "2025-01-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
+TARGET_SYMBOL = "VIRTUAL"  # Base oder Pair, z.B. "ETH" / "ETHUSDT"
+FROM_DATE: Optional[str] = "2024-01-01"  # z.B. "2026-09-01" oder "2026-09-01 12:00"
 TO_DATE: Optional[str] = "2026-12-28"    # z.B. "2026-09-02"
-BTC_RISE_WINDOW_MIN = 60
-BTC_RISE_THRESHOLD_PCT = 1.0
+BTC_RISE_WINDOW_MIN = 360
+BTC_RISE_THRESHOLD_PCT = 2.0
 USE_THRESHOLD_CROSSING = True
 RANDOM_SEED = 42  # reproduzierbare Zufalls-Käufe
 # Pro Horizont: RANDOM-n_used = max(UP,DOWN)-n_used. Override: feste Anzahl je Horizont
