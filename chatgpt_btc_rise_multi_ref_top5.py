@@ -1669,6 +1669,35 @@ def fmt_pct(
     return f"{value:9.2f}%"
 
 
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_header(
     start_ms: int,
     end_ms: int,
@@ -2130,6 +2159,13 @@ def main():
     # SCENARIOS
     # --------------------------------------------------------
 
+    # Effektiver Zeitraum fuer die Block-Header (Events aus den Refs).
+    block_period = _block_range(*_effective_range_ms(
+        start_ms,
+        end_ms,
+        *[s.times for s in refs_data.values()],
+    ))
+
     total_scenarios = (
         len(EVENT_WINDOWS_MIN)
         * len(EVENT_THRESHOLDS_PCT)
@@ -2157,7 +2193,8 @@ def main():
                     f"UP | Event "
                     f"{window_minutes}m | "
                     f"+{threshold_pct:.1f}% | "
-                    f"{quorum}/3 REFS"
+                    f"{quorum}/3 REFS | "
+                    f"{block_period}"
                 )
 
                 print("=" * 118)

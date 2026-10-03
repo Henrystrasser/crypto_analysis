@@ -790,6 +790,35 @@ def fmt_vs_bh(v: Optional[float]) -> str:
     return fmt_pct(v)
 
 
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_coin_result(
     coin: str,
     direction: str,
@@ -797,6 +826,7 @@ def print_coin_result(
     by_h: Dict[str, dict],
     bh: Optional[dict],
     ref_symbol: str = "BTC",
+    period: Optional[str] = None,
 ) -> None:
     if direction == "UP":
         trigger = (
@@ -815,6 +845,7 @@ def print_coin_result(
     print(
         f"{direction} | {coin} | {trigger} | "
         f"{len(trades)} Events | Holds {', '.join(HORIZON_NAMES)}"
+        + (f" | {period}" if period else "")
     )
     print("-" * 100)
 
@@ -1100,6 +1131,11 @@ def main(argv: Optional[List[str]] = None) -> None:
             continue
 
         bh = buy_and_hold_roi(df, start_ms, end_ms)
+        # Effektiver Zeitraum je Coin fuer die Block-Header (spaeteres Listing beachten).
+        coin_period = _block_range(*_effective_range_ms(
+            start_ms, end_ms, ref_df["open_time"].to_numpy(), df["open_time"].to_numpy()
+        ))
+        rand_period = _block_range(*_effective_range_ms(start_ms, end_ms, df["open_time"].to_numpy()))
 
         # Seed pro Coin → reproduzierbar, aber zwischen Coins unterschiedlich
         coin_seed = RANDOM_SEED + (sum(ord(c) for c in pair) % 10_000)
@@ -1133,7 +1169,10 @@ def main(argv: Optional[List[str]] = None) -> None:
             batch.append(("RANDOM", rand_trades, rand_by_h))
 
         for direction, trades, by_h in batch:
-            print_coin_result(pair, direction, trades, by_h, bh, ref_symbol=ref_base)
+            print_coin_result(
+                pair, direction, trades, by_h, bh, ref_symbol=ref_base,
+                period=rand_period if direction == "RANDOM" else coin_period,
+            )
 
             row: dict = {
                 "coin": pair,

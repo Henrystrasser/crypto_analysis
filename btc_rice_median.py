@@ -295,6 +295,35 @@ def fmt(v: Optional[float]) -> str:
     return f"{v:+.2f}%"
 
 
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_table(title: str, trades: List[dict], bh: Optional[float], events: pd.DataFrame) -> None:
     sum_note = ""
     if not events.empty:
@@ -347,6 +376,9 @@ def main() -> None:
     if target.empty:
         raise SystemExit(f"Keine Kerzen {target_pair}")
     bh = buy_and_hold(target, start_ms, end_ms)
+    block_period = _block_range(*_effective_range_ms(
+        start_ms, end_ms, panel["open_time"].to_numpy(), target["open_time"].to_numpy()
+    ))
 
     for window_min in WINDOWS_MIN:
         bars = window_min // BAR_MIN
@@ -356,7 +388,7 @@ def main() -> None:
             for name, ev in signals.items():
                 trades = simulate(target, ev)
                 print_table(
-                    f"{name} | {th:g}% / {window_min // 60}h | {target_base}",
+                    f"{name} | {th:g}% / {window_min // 60}h | {target_base} | {block_period}",
                     trades,
                     bh,
                     ev,

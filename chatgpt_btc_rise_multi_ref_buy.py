@@ -788,6 +788,35 @@ def min_ref_label(min_refs: int, total: int) -> str:
     return f"{min_refs}/{total}"
 
 
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_section(
     target_pair: str,
     direction: str,
@@ -799,6 +828,7 @@ def print_section(
     bh: Optional[dict],
     total_refs: int,
     random_stats: Optional[Dict[str, dict]] = None,
+    period: Optional[str] = None,
 ) -> None:
     label = min_ref_label(min_refs, total_refs)
 
@@ -810,6 +840,7 @@ def print_section(
         f"{'+' if direction == 'UP' else '-'}{threshold:g}% | "
         f"Refs {label} | "
         f"Target {target_pair}"
+        + (f" | {period}" if period else "")
     )
     print("=" * 118)
 
@@ -1047,6 +1078,14 @@ def main(argv: Optional[List[str]] = None) -> None:
         end_ms,
     )
 
+    # Effektiver Zeitraum fuer die Block-Header (Refs + Target vorhanden).
+    block_period = _block_range(*_effective_range_ms(
+        start_ms,
+        end_ms,
+        target_df["open_time"].to_numpy(),
+        *[d["open_time"].to_numpy() for d in ref_data.values()],
+    ))
+
     # --------------------------------------------------------
     # Detect events
     # --------------------------------------------------------
@@ -1185,6 +1224,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                         bh,
                         len(ref_bases),
                         random_stats,
+                        period=block_period,
                     )
 
                     print_trade_examples(trades)

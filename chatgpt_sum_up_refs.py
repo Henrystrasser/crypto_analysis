@@ -938,6 +938,35 @@ def fmt_pct(
     return f"{value:+.2f}%"
 
 
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_results(
     target: str,
     mode: str,
@@ -946,6 +975,7 @@ def print_results(
     events: List[StrengthEvent],
     trades: List[dict],
     bh: Optional[float],
+    period: Optional[str] = None,
 ):
 
     print()
@@ -956,6 +986,7 @@ def print_results(
         f"Event {window_min:>3}m | "
         f"{threshold:+.0f}% | "
         f"Target {target}"
+        + (f" | {period}" if period else "")
     )
 
     print("=" * 110)
@@ -1340,6 +1371,15 @@ def main():
         end_ms,
     )
 
+    # Effektiver Zeitraum fuer die Block-Header. Events werden auf allen
+    # geladenen Ref-Kerzen erkannt (bis fetch_end_ms), daher diese Grenze.
+    block_period = _block_range(*_effective_range_ms(
+        start_ms,
+        fetch_end_ms,
+        target_df["open_time"].to_numpy(),
+        *[d["open_time"].to_numpy() for d in ref_dfs.values()],
+    ))
+
     print(
         f"Buy & Hold: {fmt_pct(bh)}"
     )
@@ -1431,6 +1471,7 @@ def main():
                         events,
                     ),
                     bh=bh,
+                    period=block_period,
                 )
 
                 trades = simulate_events(

@@ -621,10 +621,40 @@ def fmt_vs_bh(v: Optional[float]) -> str:
     return fmt_pct(v)
 
 
-def print_block(ref: str, spec: dict, direction: str, pair: str, trades: List[dict], by_h: Dict[str, dict], bh: Optional[dict]) -> None:
+# ------------------------------------------------------------
+# Block-Header: effektiver Zeitraum (Europe/Berlin)
+# ------------------------------------------------------------
+
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo as _ZoneInfo
+    _tz = _ZoneInfo("Europe/Berlin")
+    a = _dt.fromtimestamp(from_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    b = _dt.fromtimestamp(to_ms / 1000.0, tz=_tz).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
+def print_block(ref: str, spec: dict, direction: str, pair: str, trades: List[dict], by_h: Dict[str, dict], bh: Optional[dict], period: Optional[str] = None) -> None:
     print()
     print(
         f"{direction} | Ref={ref} | {spec['threshold_pct']:g}% / {spec['window_min'] // 60}h | Ziel={pair}"
+        + (f" | {period}" if period else "")
     )
     print(f"{'Hold':<8} {'n':>6} {'Cmp':>10} {'vsBH':>10}")
     for h in HORIZON_NAMES:
@@ -769,6 +799,7 @@ def main(argv: Optional[List[str]] = None) -> None:
     if target_df.empty:
         raise SystemExit(f"Keine Kerzen für {target_pair}")
     bh = buy_and_hold_roi(target_df, start_ms, end_ms)
+    rand_period = _block_range(*_effective_range_ms(start_ms, end_ms, target_df["open_time"].to_numpy()))
     print(f"  {len(target_df)} Kerzen Ziel\n", flush=True)
 
     store: List[dict] = []
@@ -781,6 +812,9 @@ def main(argv: Optional[List[str]] = None) -> None:
             print(f"  keine Kerzen — skip {ref_base}\n", flush=True)
             continue
         print(f"  {len(ref_df)} Kerzen\n", flush=True)
+        ref_period = _block_range(*_effective_range_ms(
+            start_ms, end_ms, ref_df["open_time"].to_numpy(), target_df["open_time"].to_numpy()
+        ))
 
         for spec in EVENT_SPECS:
             if spec["window_min"] % BAR_MIN != 0:
@@ -799,7 +833,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 trades = simulate_coin(target_pair, target_df, events)
                 by_h = summarize_by_horizon(trades, gap_ms, rng_boot, n_boot)
                 dir_by_h[direction] = by_h
-                print_block(ref_base, spec, direction, target_pair, trades, by_h, bh)
+                print_block(ref_base, spec, direction, target_pair, trades, by_h, bh, period=ref_period)
                 for h, st in by_h.items():
                     store.append(
                         {
@@ -826,7 +860,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 rand_trades, rand_by_h = simulate_random_matched_horizons(
                     target_pair, target_df, targets, start_ms, end_ms, rng
                 )
-                print_block(ref_base, spec, "RANDOM", target_pair, rand_trades, rand_by_h, bh)
+                print_block(ref_base, spec, "RANDOM", target_pair, rand_trades, rand_by_h, bh, period=rand_period)
 
     if store:
         print_agreement(store, target_pair)
