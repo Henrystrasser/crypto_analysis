@@ -29,31 +29,35 @@ den dynamischen Threshold brechen:
 
     -> Signal
 
-Danach testen wir unterschiedliche Entry Delays:
+Danach testen wir unterschiedliche Entry Delays
+(Default ENTRY_DELAYS_MIN):
 
     0m
-    15m
-    30m
+    60m
+    120m
+    300m
+    600m
 
 ============================================================
 BEISPIEL
 ============================================================
 
-Signal um 10:00
+Signal-Kerze schließt um 10:00
+(alle Zeiten = Kerzen-CLOSE, Europe/Berlin)
 
 Delay 0m:
 
-    Entry 10:00
+    Entry 10:00 (Close der Signal-Kerze)
     Exit  + Hold
 
-Delay 15m:
+Delay 60m:
 
-    Entry 10:15
+    Entry 11:00
     Exit  + Hold
 
-Delay 30m:
+Delay 120m:
 
-    Entry 10:30
+    Entry 12:00
     Exit  + Hold
 
 Der Hold beginnt immer beim tatsächlichen Entry.
@@ -93,11 +97,13 @@ Threshold = 1.0%
 ENTRY DELAY
 ============================================================
 
-Getestet werden standardmäßig:
+Getestet werden standardmäßig (ENTRY_DELAYS_MIN):
 
     0m
-    15m
-    30m
+    60m
+    120m
+    300m
+    600m
 
 Der Delay verändert NICHT:
 
@@ -159,6 +165,13 @@ den tatsächlichen Entry verwenden – genau das ist
 der Sinn des Tests.
 
 ============================================================
+Signal-Schalter (Config oben): VOL_ADAPTIVE (False = fester
+Threshold), EVENT_MODE ("cross" = nur Neueintritt, "level" = jede
+Kerze mit erfüllter Bedingung), DIRECTION ("UP" | "DOWN").
+Bei VOL_ADAPTIVE wird die Vol-Historie vor FROM_DATE nachgeladen.
+
+Zeitangaben: Europe/Berlin; Entry/Exit = Kerzen-CLOSE.
+Ein neuer Trade darf exakt am Hold-Ende des vorherigen starten.
 """
 
 
@@ -186,9 +199,16 @@ BINANCE_BASE = (
     "https://data-api.binance.vision"
 )
 
+def _interval_to_minutes(interval: str) -> int:
+    """'15m' -> 15, '1h' -> 60, '4h' -> 240, '1d' -> 1440 (aus INTERVAL abgeleitet)."""
+    units = {"m": 1, "h": 60, "d": 1440, "w": 10080}
+    return int(interval[:-1]) * units[interval[-1]]
+
+
 INTERVAL = "15m"
 
-INTERVAL_MINUTES = 15
+# Aus INTERVAL abgeleitet - nicht von Hand koppeln.
+INTERVAL_MINUTES = _interval_to_minutes(INTERVAL)
 
 INTERVAL_MS = (
     INTERVAL_MINUTES
@@ -305,16 +325,55 @@ THRESHOLD_INTENSITY = 1.00
 # VOLATILITY
 # ============================================================
 
-# 24h aktuelle Volatilität
-VOL_CURRENT_LOOKBACK_BARS = 96
+# Aktuelle Marktvolatilität: 24 Stunden (Kerzenzahl wird berechnet)
+VOL_CURRENT_LOOKBACK_MINUTES = 24 * 60
+VOL_CURRENT_LOOKBACK_BARS = (
+    VOL_CURRENT_LOOKBACK_MINUTES
+    // INTERVAL_MINUTES
+)
 
 # 30 Tage Normalvolatilität
 VOL_BASELINE_LOOKBACK_DAYS = 30
 
 VOL_BASELINE_LOOKBACK_BARS = (
-    VOL_CURRENT_LOOKBACK_BARS
-    * VOL_BASELINE_LOOKBACK_DAYS
+    VOL_BASELINE_LOOKBACK_DAYS
+    * 24 * 60
+    // INTERVAL_MINUTES
 )
+
+# ------------------------------------------------------------
+# SIGNAL-SCHALTER
+# ------------------------------------------------------------
+
+# VOL_ADAPTIVE:
+#   True  = volatilitäts-adaptiver Threshold. Die Vol-Historie
+#           (Baseline + aktuelles Fenster) wird automatisch VOR
+#           FROM_DATE nachgeladen (Warmup); Events erst ab FROM_DATE.
+#   False = fester Threshold (Faktor 1.0), kein Warmup nötig.
+VOL_ADAPTIVE = True
+
+# EVENT_MODE:
+#   "cross" = nur wenn die Bedingung NEU erfüllt ist
+#             (vorherige Kerze hat sie nicht erfüllt)
+#   "level" = jede Kerze, auf der die Bedingung gilt
+#             (nach Hold-Ende wird erneut gekauft, falls weiter erfüllt)
+EVENT_MODE = "cross"
+
+# DIRECTION:
+#   "UP"   = Refs steigen um >= Threshold
+#   "DOWN" = Refs fallen um >= Threshold (Return <= -Threshold)
+DIRECTION = "UP"
+
+
+def vol_warmup_ms() -> int:
+    """Vorlauf für die Ref-Daten (nur bei VOL_ADAPTIVE)."""
+    if not VOL_ADAPTIVE:
+        return 0
+    return (
+        VOL_BASELINE_LOOKBACK_BARS
+        + VOL_CURRENT_LOOKBACK_BARS
+        + 1
+    ) * INTERVAL_MS
 
 # 1.0 = linear
 VOLATILITY_POWER = 1.0
@@ -1002,6 +1061,11 @@ def add_market_volatility(
     refs: Sequence[str],
 ) -> pd.DataFrame:
 
+    if not VOL_ADAPTIVE:
+        # Fester Threshold: Faktor 1.0, keine Vol-Historie nötig.
+        frame["vol_factor"] = 1.0
+        return frame
+
     for ref in refs:
 
         frame[
@@ -1101,6 +1165,19 @@ def add_market_volatility(
 # EVENTS
 # ============================================================
 
+def _threshold_hit(
+    returns: pd.Series,
+    threshold: pd.Series,
+    direction: str,
+) -> pd.Series:
+    """UP: Return >= +Threshold | DOWN: Return <= -Threshold."""
+    if direction == "UP":
+        return returns >= threshold
+    if direction == "DOWN":
+        return returns <= -threshold
+    raise ValueError(f"DIRECTION {direction!r} ungültig (UP|DOWN).")
+
+
 def create_events(
     refs_data: Dict[
         str,
@@ -1109,7 +1186,16 @@ def create_events(
     window_minutes: int,
     base_threshold_pct: float,
     quorum: int,
+    direction: Optional[str] = None,
 ) -> List[Event]:
+
+    if direction is None:
+        direction = DIRECTION
+
+    if EVENT_MODE not in ("cross", "level"):
+        raise ValueError(
+            f"EVENT_MODE {EVENT_MODE!r} ungültig (cross|level)."
+        )
 
     if (
         window_minutes
@@ -1203,13 +1289,10 @@ def create_events(
         {
             ref:
                 (
-                    returns_df[ref]
-                    >=
-                    (
-                        frame[
-                            "effective_threshold_pct"
-                        ]
-                        / 100.0
+                    _threshold_hit(
+                        returns_df[ref],
+                        frame["effective_threshold_pct"] / 100.0,
+                        direction,
                     )
                 )
             for ref in refs_data.keys()
@@ -1242,6 +1325,10 @@ def create_events(
         condition
         & ~previous_condition
     )
+
+    if EVENT_MODE == "level":
+        # LEVEL: jede Kerze, auf der die Bedingung gilt.
+        crossing = condition.copy()
 
     times = frame[
         "time"
@@ -1667,6 +1754,28 @@ def fmt_pct(
     return f"{value:9.2f}%"
 
 
+def _effective_range_ms(start_ms, end_ms, *time_arrays):
+    """Effektiver Zeitraum: [start, end] begrenzt auf die tatsaechlich vorhandenen Kerzen
+    (spaeteres Listing / frueheres Datenende)."""
+    lo, hi = int(start_ms), int(end_ms)
+    for ts in time_arrays:
+        if ts is None or len(ts) == 0:
+            continue
+        arr = np.asarray(ts, dtype=np.int64)
+        lo = max(lo, int(arr.min()))
+        inside = arr[arr <= int(end_ms)]
+        if len(inside):
+            hi = min(hi, int(inside.max()))
+    return lo, hi
+
+
+def _block_range(from_ms, to_ms) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) fuer Block-Header."""
+    a = datetime.fromtimestamp(from_ms / 1000.0, tz=BERLIN).strftime("%Y-%m-%d")
+    b = datetime.fromtimestamp(to_ms / 1000.0, tz=BERLIN).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
+
+
 def print_header(
     start_ms: int,
     end_ms: int,
@@ -1717,6 +1826,12 @@ def print_header(
     print(
         f"Volatility Power: "
         f"{VOLATILITY_POWER:.2f}"
+    )
+    print(
+        f"Vol adaptiv: {VOL_ADAPTIVE} | "
+        f"Event-Modus: {EVENT_MODE} | "
+        f"Richtung: {DIRECTION} | "
+        f"Warmup: {vol_warmup_ms() / 86_400_000:.1f} Tage vor Start"
     )
 
     print(
@@ -1965,6 +2080,8 @@ def main():
             "Lade Reference-Coins..."
         )
 
+        ref_fetch_start_ms = start_ms - vol_warmup_ms()
+
         refs_data = {}
 
         for ref in REF_SYMBOLS:
@@ -1980,7 +2097,7 @@ def main():
             series = fetch_klines(
                 session,
                 symbol,
-                start_ms,
+                ref_fetch_start_ms,
                 end_ms,
             )
 
@@ -2046,6 +2163,14 @@ def main():
     # GLOBAL RESULTS
     # --------------------------------------------------------
 
+    # Effektiver Zeitraum fuer die Block-Header (Refs + Target vorhanden).
+    block_period = _block_range(*_effective_range_ms(
+        start_ms,
+        end_ms,
+        target.times,
+        *[s.times for s in refs_data.values()],
+    ))
+
     global_rows = []
 
     total_scenarios = (
@@ -2079,7 +2204,9 @@ def main():
                 f"{base_threshold_pct:.1f}% | "
                 f"Quorum "
                 f"{BASE_QUORUM}/"
-                f"{len(REF_SYMBOLS)}"
+                f"{len(REF_SYMBOLS)} | "
+                f"{DIRECTION} | {EVENT_MODE} | "
+                f"{block_period}"
             )
 
             print("=" * 120)
@@ -2090,6 +2217,12 @@ def main():
                 base_threshold_pct,
                 BASE_QUORUM,
             )
+
+            # Warmup-Kerzen liefern nur Vol-Historie: Events erst ab FROM_DATE.
+            events = [
+                e for e in events
+                if e.signal_ms >= start_ms
+            ]
 
             print(
                 f"Raw Events: "
@@ -2314,7 +2447,7 @@ def main():
     print()
 
     # Für jedes Szenario/Hold die Änderung
-    # vom sofortigen Entry auf 15m/30m ausgeben.
+    # vom sofortigen Entry auf die übrigen ENTRY_DELAYS_MIN ausgeben.
     comparison_rows = []
 
     group_cols = [
@@ -2498,7 +2631,8 @@ def main():
 
     print(
         "Die Signaldefinition bleibt für "
-        "0m, 15m und 30m exakt gleich."
+        + ", ".join(f"{x}m" for x in ENTRY_DELAYS_MIN)
+        + " exakt gleich."
     )
 
     print(
@@ -2555,7 +2689,7 @@ def parse_args():
         default=None,
         help=(
             "Entry Delays, z.B. "
-            "0,15,30"
+            "0,60,120,300,600"
         ),
     )
 

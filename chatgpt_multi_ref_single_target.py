@@ -37,6 +37,9 @@ Das Script testet:
 Wichtig:
   Das Signal wird am Ende der Referenz-Kerze ausgelöst.
   Der Target-Coin wird zum Close der Target-Kerze an diesem Zeitpunkt gekauft.
+  Fehlt die Target-Kerze exakt zu diesem Zeitpunkt (z.B. vor dem Listing),
+  wird das Event verworfen (kein Ausweichen auf eine spätere Kerze).
+  Re-Entry exakt am Hold-Ende des vorherigen Trades ist erlaubt.
   Es wird keine zukünftige Information verwendet.
 
 CLI:
@@ -104,7 +107,7 @@ HOLD_HORIZONS: Dict[str, int] = {
     "192h": 11520,
 }
 
-FROM_DATE: Optional[str] = "2024-01-01"
+FROM_DATE: Optional[str] = "2026-01-01"
 TO_DATE: Optional[str] = "2026-12-28"
 LOOKBACK_DAYS = 400
 
@@ -297,6 +300,10 @@ def fetch_klines(
         ],
     )
 
+    # Nur ABGESCHLOSSENE Kerzen (keine laufende Kerze).
+    now_ms = int(time.time() * 1000)
+    df = df[df["close_time"].astype(np.int64) < now_ms]
+
     df = df[
         ["open_time", "open", "high", "low", "close", "volume"]
     ].copy()
@@ -460,11 +467,19 @@ def apply_costs(entry: float, exit_: float) -> Tuple[float, float]:
     return entry * (1.0 + cost), exit_ * (1.0 - cost)
 
 
-def exact_or_next_position(df: pd.DataFrame, t_ms: int) -> Optional[int]:
-    positions = df.index[df["open_time"] >= t_ms]
-    if len(positions) == 0:
-        return None
-    return int(positions[0])
+def exact_position(df: pd.DataFrame, t_ms: int) -> Optional[int]:
+    """
+    Position der Kerze mit open_time == t_ms, sonst None.
+
+    KEIN Vorwärtssuchen: fehlt die Kerze (z.B. vor dem Listing oder
+    Datenlücke), wird das Event verworfen statt auf eine spätere
+    Kerze verschoben.
+    """
+    times = df["open_time"].to_numpy(dtype=np.int64)
+    i = int(np.searchsorted(times, int(t_ms)))
+    if i < len(times) and int(times[i]) == int(t_ms):
+        return i
+    return None
 
 
 def roi_for_hold(
@@ -472,9 +487,15 @@ def roi_for_hold(
     entry_pos: int,
     hold_bars: int,
 ) -> Optional[float]:
-    exit_pos = entry_pos + hold_bars
+    # Exit exakt auf der Kerze entry_time + Hold (keine Index-Verschiebung
+    # über Datenlücken hinweg). Fehlt sie -> None.
+    entry_time = int(df["open_time"].iat[entry_pos])
+    exit_pos = exact_position(
+        df,
+        entry_time + int(hold_bars) * int(BAR_MIN) * 60_000,
+    )
 
-    if exit_pos >= len(df):
+    if exit_pos is None:
         return None
 
     entry = float(df.iloc[entry_pos]["close"])
@@ -495,7 +516,7 @@ def simulate_events(
     trades: List[dict] = []
 
     for event in events:
-        entry_pos = exact_or_next_position(target_df, event.end_ms)
+        entry_pos = exact_position(target_df, event.end_ms)
 
         if entry_pos is None:
             continue
@@ -516,7 +537,8 @@ def simulate_events(
             "matched_refs": ",".join(event.matched_refs),
             "event_time_ms": event.end_ms,
             "buy_time_ms": entry_time,
-            "buy_time": ms_to_berlin_str(entry_time),
+            # Anzeige als Kerzen-CLOSE (Kauf zum Close dieser Kerze).
+            "buy_time": ms_to_berlin_str(entry_time + int(BAR_MIN) * 60_000),
             "ref_moves": event.ref_moves,
             "buy_price": entry_price * (
                 1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0
@@ -546,7 +568,8 @@ def filter_non_overlapping(
       1 Slot
       Cooldown = Hold-Länge
 
-    Trade bei exakt last_buy + hold wird als overlap behandelt.
+    Trade bei exakt last_buy + hold ist erlaubt (vorheriger Trade
+    ist dann gerade verkauft) - einheitlich mit den anderen Scripts.
     """
 
     hold_ms = HOLD_HORIZONS[horizon] * 60_000
@@ -570,7 +593,7 @@ def filter_non_overlapping(
 
         if (
             last_buy_ms is not None
-            and buy_ms <= last_buy_ms + hold_ms
+            and buy_ms < last_buy_ms + hold_ms
         ):
             continue
 
@@ -660,8 +683,9 @@ def buy_and_hold(
 
     return {
         "roi": (sell / buy - 1.0) * 100.0,
-        "buy_time": ms_to_berlin_str(int(sub.iloc[0]["open_time"])),
-        "sell_time": ms_to_berlin_str(int(sub.iloc[-1]["open_time"])),
+        # Anzeige als Kerzen-CLOSE.
+        "buy_time": ms_to_berlin_str(int(sub.iloc[0]["open_time"]) + int(BAR_MIN) * 60_000),
+        "sell_time": ms_to_berlin_str(int(sub.iloc[-1]["open_time"]) + int(BAR_MIN) * 60_000),
     }
 
 
@@ -677,29 +701,58 @@ def random_positions(
     n_target: int,
     rng: np.random.Generator,
 ) -> List[int]:
+    hold_ms = hold_bars * BAR_MIN * 60_000
+    times = df["open_time"].to_numpy(dtype=np.int64)
+    closes = df["close"].to_numpy(dtype=np.float64)
+
+    # Kandidat nur, wenn die exakte Exit-Kerze existiert (wie bei der
+    # Strategie) -> jeder akzeptierte Kandidat liefert einen Trade.
+    exit_exists = np.isin(times + hold_ms, times)
+
     candidates = [
-        i
-        for i in range(len(df))
-        if start_ms <= int(df.iloc[i]["open_time"]) <= end_ms
-        and i + hold_bars < len(df)
-        and float(df.iloc[i]["close"]) > 0
+        int(i)
+        for i in np.flatnonzero(
+            (times >= start_ms)
+            & (times <= end_ms)
+            & exit_exists
+            & (closes > 0)
+        )
     ]
 
     if not candidates or n_target <= 0:
         return []
 
-    # Shuffle candidates, then greedily enforce non-overlap.
+    # Exakt n_target nicht-überlappende Zufallstrades (Abstand >= Hold),
+    # gleichverteilt über alle zulässigen Anordnungen:
+    # Slots im Kerzenraster, n Positionen aus (Slots - (n-1)*hold_bars)
+    # ziehen und je Trade um i*hold_bars verschieben. Liegt eine Position
+    # auf einer Lücke (keine Kerze/kein Exit), wird neu gezogen.
+    bar_ms = BAR_MIN * 60_000
+    cand_arr = np.array(candidates, dtype=np.int64)
+    t0 = int(times[cand_arr[0]])
+    slot_of = {int((int(times[i]) - t0) // bar_ms): int(i) for i in cand_arr}
+    n_slots = max(slot_of) + 1
+    free = n_slots - (n_target - 1) * hold_bars
+
+    if free >= n_target:
+        offsets = np.arange(n_target, dtype=np.int64) * hold_bars
+        for _ in range(500):
+            picks = np.sort(rng.choice(free, size=n_target, replace=False)) + offsets
+            if all(int(k) in slot_of for k in picks):
+                return [slot_of[int(k)] for k in picks]
+
+    # Fallback (sehr lückige Daten): greedy in zufälliger Reihenfolge.
     order = candidates.copy()
     rng.shuffle(order)
 
     accepted: List[int] = []
-    hold_ms = hold_bars * BAR_MIN * 60_000
 
     for pos in order:
-        t = int(df.iloc[pos]["open_time"])
+        t = int(times[pos])
 
+        # Non-overlap wie Strategie: Abstand >= Hold ist erlaubt.
         if all(
-            abs(t - int(df.iloc[p]["open_time"])) > hold_ms
+            abs(t - int(times[p])) >= hold_ms
             for p in accepted
         ):
             accepted.append(pos)
@@ -707,7 +760,13 @@ def random_positions(
         if len(accepted) >= n_target:
             break
 
-    return sorted(accepted, key=lambda p: int(df.iloc[p]["open_time"]))
+    if len(accepted) < n_target:
+        print(
+            f"   Hinweis RANDOM: nur {len(accepted)}/{n_target} "
+            f"nicht-überlappende Trades möglich."
+        )
+
+    return sorted(accepted, key=lambda p: int(times[p]))
 
 
 def random_matched_stats(
@@ -895,7 +954,7 @@ def print_section(
     if bh:
         print(
             f"\nB&H: {fmt_pct(bh['roi'])} | "
-            f"{bh['buy_time']} -> {bh['sell_time']}"
+            f"{bh['buy_time']} -> {bh['sell_time']} (Kerzen-Close)"
         )
 
     print(
@@ -925,6 +984,22 @@ def print_trade_examples(
             f"{moves} | "
             f"matched={t['matched_refs']}"
         )
+
+
+def clamp_end_to_closed_candle(end: datetime) -> datetime:
+    """
+    TO_DATE in der Zukunft -> Ende = Open-Zeit der letzten
+    ABGESCHLOSSENEN Kerze (keine laufende Kerze).
+    """
+    bar_ms = int(BAR_MIN) * 60_000
+    now_ms = int(time.time() * 1000)
+    last_closed_open_ms = (now_ms // bar_ms) * bar_ms - bar_ms
+    last_closed = pd.Timestamp(last_closed_open_ms, unit="ms", tz="UTC")
+    if end.tzinfo is not None:
+        last_closed = last_closed.tz_convert(end.tzinfo)
+    else:
+        last_closed = last_closed.tz_localize(None)
+    return min(end, last_closed.to_pydatetime())
 
 
 # ============================================================
@@ -975,6 +1050,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         lookback_days=args.lookback,
         default_lookback=LOOKBACK_DAYS,
     )
+    end = clamp_end_to_closed_candle(end)
 
     start_ms = utc_ms(start)
     end_ms = utc_ms(end)

@@ -2,7 +2,7 @@
 """
 Multi-Reference Buy Backtest -> GRAND über die Top-N Alt-Coins
 
-Basis: chatgpt_btc_rise_multi_ref_buy.py (wird importiert, NICHT verändert).
+Basis: chatgpt_multi_ref_single_target.py (wird importiert, NICHT verändert).
 Simulation, Gebühren, Signal- und Hold-Logik sind identisch, weil die
 Funktionen direkt aus dem Basisscript verwendet werden:
   detect_multi_ref_events, simulate_events, summarize (Non-overlap je Hold),
@@ -64,7 +64,7 @@ TOP_N = 30
 # Mindestanzahl Trades (nach Non-overlap), damit eine Variante zählt.
 MIN_TRADES = 20
 
-# --- Grid / Refs: Default = Werte aus chatgpt_btc_rise_multi_ref_buy.py ---
+# --- Grid / Refs: Default = Werte aus chatgpt_multi_ref_single_target.py ---
 REF_SYMBOLS: List[str] = ["BTC", "SOL", "XRP","ETH"]
 
 EVENT_WINDOWS_MIN: List[int] = [60, 180]
@@ -434,7 +434,7 @@ def print_summary_table(
     print("-" * len(header))
     print(
         "Compound = Produkt der non-overlapping Trade-Returns der besten Variante "
-        "(gleiche Logik wie chatgpt_btc_rise_multi_ref_buy.py)."
+        "(gleiche Logik wie chatgpt_multi_ref_single_target.py)."
     )
     print("vs B&H = Compound minus Buy&Hold des Coins im selben Zeitraum.")
     print("Daten ab = nur gesetzt, wenn der Coin erst nach dem Startdatum Kerzen hat (späteres Listing).")
@@ -492,6 +492,7 @@ def main(argv: Optional[List[str]] = None) -> None:
         lookback_days=args.lookback,
         default_lookback=LOOKBACK_DAYS,
     )
+    end = base.clamp_end_to_closed_candle(end)
     start_ms = base.utc_ms(start)
     end_ms = base.utc_ms(end)
     fetch_end_ms = base.utc_ms(end + pd.Timedelta(minutes=base.MAX_HOLD_MIN))

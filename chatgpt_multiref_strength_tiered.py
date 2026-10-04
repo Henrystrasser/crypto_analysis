@@ -1,5 +1,6 @@
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -60,13 +61,20 @@ STRONG_THRESHOLD_MULTIPLIER = 1.5
 
 USE_VOL_ADAPTIVE_THRESHOLD = True
 
-VOL_LOOKBACK_BARS = 96       # 24h bei 15m
-VOL_BASELINE_BARS = 2880     # 30 Tage bei 15m
+VOL_LOOKBACK_HOURS = 24      # aktuelle Vol (Kerzenzahl wird aus INTERVAL berechnet)
+VOL_BASELINE_DAYS = 30       # Baseline-Vol
 
 VOL_FACTOR_MIN = 0.5
 VOL_FACTOR_MAX = 3.0
 
 THRESHOLD_INTENSITY = 1.0
+
+# EVENT_MODE:
+#   "level" = jede Kerze, auf der die Bedingung gilt
+#             (nach Hold-Ende wird erneut gekauft, falls weiter erfüllt)
+#   "cross" = nur wenn die Bedingung NEU erfüllt ist
+#             (vorherige Kerze hat sie nicht erfüllt)
+EVENT_MODE = "level"
 
 # ------------------------------------------------------------
 # Tests
@@ -106,25 +114,42 @@ HOLDS_HOURS = [
 # HELPERS
 # ============================================================
 
-INTERVAL_MINUTES = 15
+INTERVAL_MINUTES = int(INTERVAL[:-1]) * {"m": 1, "h": 60, "d": 1440}[INTERVAL[-1]]  # aus INTERVAL abgeleitet
 MS_PER_MINUTE = 60_000
 MS_PER_DAY = 24 * 60 * MS_PER_MINUTE
 
+# Aus INTERVAL / Zeitangaben abgeleitet (nicht von Hand koppeln).
+INTERVAL_MS = INTERVAL_MINUTES * MS_PER_MINUTE
+VOL_LOOKBACK_BARS = VOL_LOOKBACK_HOURS * 60 // INTERVAL_MINUTES
+VOL_BASELINE_BARS = VOL_BASELINE_DAYS * 24 * 60 // INTERVAL_MINUTES
 
-def date_to_ms(date_str):
-    dt = datetime.strptime(date_str, "%Y-%m-%d").replace(
-        tzinfo=timezone.utc
-    )
+BERLIN = ZoneInfo("Europe/Berlin")
+
+# Werden zur Laufzeit gesetzt (load_all_data / main).
+ANALYSIS_START = None   # pd.Timestamp (Berlin) = START_DATE 00:00
+BLOCK_PERIOD = ""       # "from YYYY-MM-DD to YYYY-MM-DD"
+
+
+
+def date_to_ms(date_str, end_of_day=False):
+    """
+    YYYY-MM-DD als Europe/Berlin-Datum.
+    end_of_day=True -> Open-Zeit der letzten Kerze dieses Tages.
+    """
+    dt = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=BERLIN)
+    if end_of_day:
+        dt = dt + timedelta(days=1)
+        return int(dt.timestamp() * 1000) - INTERVAL_MS
     return int(dt.timestamp() * 1000)
 
 
 def get_now_closed_candle_ms():
     """
     Liefert den Timestamp der letzten vollständig geschlossenen
-    15m-Kerze.
+    Kerze (INTERVAL).
     """
     now_ms = int(time.time() * 1000)
-    interval_ms = 15 * MS_PER_MINUTE
+    interval_ms = INTERVAL_MINUTES * MS_PER_MINUTE
 
     current_candle_open = (now_ms // interval_ms) * interval_ms
 
@@ -205,16 +230,27 @@ def fetch_klines(symbol, start_ms, end_ms):
     df = df.sort_values("open_time")
     df = df.set_index("open_time")
 
+    df.index = df.index.tz_convert(BERLIN)
     return df
 
 
 def load_all_data():
+    global ANALYSIS_START
     start_ms = date_to_ms(START_DATE)
-
+    last_closed_ms = get_now_closed_candle_ms()
     if END_DATE is None:
-        end_ms = get_now_closed_candle_ms()
+        end_ms = last_closed_ms
     else:
-        end_ms = date_to_ms(END_DATE)
+        # END_DATE inklusive, aber nie nach der letzten geschlossenen Kerze
+        end_ms = min(date_to_ms(END_DATE, end_of_day=True), last_closed_ms)
+    ANALYSIS_START = pd.Timestamp(start_ms, unit="ms", tz="UTC").tz_convert(BERLIN)
+    # Warmup: Vol-Historie vor START_DATE nachladen (nur bei Vol-Anpassung)
+    warmup_bars = (
+        VOL_BASELINE_BARS + VOL_LOOKBACK_BARS + 1
+        if USE_VOL_ADAPTIVE_THRESHOLD else 0
+    )
+    fetch_start_ms = start_ms - warmup_bars * INTERVAL_MS
+    print(f"Warmup : {warmup_bars * INTERVAL_MINUTES / 1440:.1f} Tage vor START_DATE (Europe/Berlin)")
 
     print()
     print("=" * 80)
@@ -235,7 +271,7 @@ def load_all_data():
 
         df = fetch_klines(
             symbol=symbol,
-            start_ms=start_ms,
+            start_ms=fetch_start_ms,
             end_ms=end_ms,
         )
 
@@ -357,7 +393,7 @@ def build_signal_masks(
     window_bars = event_window_min // INTERVAL_MINUTES
 
     if window_bars < 1:
-        raise ValueError("Event Window muss mindestens 15 Minuten sein.")
+        raise ValueError(f"Event Window muss mindestens {INTERVAL_MINUTES}m sein.")
 
     # --------------------------------------------------------
     # Referenzrenditen
@@ -445,6 +481,21 @@ def build_signal_masks(
     return result
 
 
+def event_signal(signal, df):
+    """
+    EVENT_MODE anwenden ("level" = jede Kerze, "cross" = nur Neueintritt)
+    und nur Signale ab START_DATE zulassen (Warmup-Kerzen werden nie gehandelt).
+    """
+    s = signal.astype(bool)
+    if EVENT_MODE == "cross":
+        s = s & ~s.shift(1, fill_value=False)
+    elif EVENT_MODE != "level":
+        raise ValueError(f"EVENT_MODE {EVENT_MODE!r} ungültig (level|cross).")
+    if ANALYSIS_START is not None:
+        s = s & (df.index >= ANALYSIS_START)
+    return s
+
+
 def get_trades(
     df,
     signals,
@@ -452,50 +503,37 @@ def get_trades(
 ):
     """
     Globaler One-Slot-Ansatz:
-
     - chronologische Verarbeitung
     - sobald ein Trade läuft, werden überschneidende
-      neue Signale übersprungen
+      neue Signale übersprungen (Re-Entry exakt am Exit erlaubt)
+    - Exit exakt auf der Kerze Entry + Hold; fehlt sie
+      (Datenende / Lücke) -> kein Trade
     """
-
-    hold_bars = int(round(
-        hold_hours * 60 / INTERVAL_MINUTES
-    ))
-
     signal_positions = np.flatnonzero(
         signals.to_numpy(dtype=bool)
     )
-
     if len(signal_positions) == 0:
         return []
-
     target_prices = df[TARGET].to_numpy()
     timestamps = df.index.to_numpy()
-
+    exit_positions = df.index.get_indexer(
+        df.index[signal_positions]
+        + pd.Timedelta(hours=hold_hours)
+    )
     trades = []
-
     blocked_until_pos = -1
-
-    for pos in signal_positions:
-
-        # Kein Exit mehr innerhalb des verfügbaren Datensatzes
-        exit_pos = pos + hold_bars
-
-        if exit_pos >= len(df):
+    for pos, exit_pos in zip(signal_positions, exit_positions):
+        # Keine exakte Exit-Kerze im Datensatz
+        if exit_pos < 0:
             continue
-
         # Overlap vermeiden
         if pos < blocked_until_pos:
             continue
-
         entry_price = target_prices[pos]
         exit_price = target_prices[exit_pos]
-
         if not np.isfinite(entry_price) or not np.isfinite(exit_price):
             continue
-
         gross_return = exit_price / entry_price - 1.0
-
         # Gebühr beim Entry + Exit
         net_return = (
             (1.0 + gross_return)
@@ -503,7 +541,6 @@ def get_trades(
             * (1.0 - FEE_PER_SIDE)
             - 1.0
         )
-
         trades.append(
             {
                 "entry_time": timestamps[pos],
@@ -513,9 +550,7 @@ def get_trades(
                 "signal_position": pos,
             }
         )
-
         blocked_until_pos = exit_pos
-
     return trades
 
 
@@ -595,6 +630,7 @@ def print_config_header(
         f" | Strong {STRONG_QUORUM}/{len(REFS)}"
         f" @ {base_threshold * STRONG_THRESHOLD_MULTIPLIER * 100:.1f}%"
         f" | OR"
+        f" | {EVENT_MODE} | {BLOCK_PERIOD}"
     )
     print("-" * 80)
 
@@ -609,6 +645,12 @@ def run_test(
         event_window_min=event_window_min,
         base_threshold=base_threshold,
     )
+    # EVENT_MODE + nur Signale ab START_DATE (Warmup nie handeln)
+    for col in ("base_signal", "strong_signal", "or_signal"):
+        signals[col] = event_signal(signals[col], df)
+    signals["only_base"] = signals["base_signal"] & ~signals["strong_signal"]
+    signals["only_strong"] = signals["strong_signal"] & ~signals["base_signal"]
+    signals["both"] = signals["base_signal"] & signals["strong_signal"]
 
     base_count = int(signals["base_signal"].sum())
     strong_count = int(signals["strong_signal"].sum())
@@ -827,10 +869,24 @@ def main():
         )
 
     # --------------------------------------------------------
+    # Analysezeitraum (ohne Warmup) fuer B&H und Block-Header
+    # --------------------------------------------------------
+    global BLOCK_PERIOD
+    analysis_df = df[df.index >= ANALYSIS_START]
+    BLOCK_PERIOD = (
+        f"from {analysis_df.index.min():%Y-%m-%d} "
+        f"to {analysis_df.index.max():%Y-%m-%d}"
+    )
+    print()
+    print(f"Analyse ab : {analysis_df.index.min()} (Europe/Berlin, Warmup davor nur für Vol)")
+    print(f"Analyse bis: {analysis_df.index.max()}")
+    print(f"Event-Modus: {EVENT_MODE}")
+
+    # --------------------------------------------------------
     # Buy & Hold
     # --------------------------------------------------------
 
-    buy_hold = calculate_buy_hold(df)
+    buy_hold = calculate_buy_hold(analysis_df)
 
     print()
     print("=" * 80)

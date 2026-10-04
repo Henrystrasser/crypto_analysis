@@ -76,7 +76,7 @@ from zoneinfo import ZoneInfo
 BINANCE_BASE = "https://data-api.binance.vision"
 
 INTERVAL = "15m"
-INTERVAL_MINUTES = 15
+INTERVAL_MINUTES = int(INTERVAL[:-1]) * {"m": 1, "h": 60, "d": 1440}[INTERVAL[-1]]  # aus INTERVAL abgeleitet
 INTERVAL_MS = INTERVAL_MINUTES * 60 * 1000
 
 BERLIN = ZoneInfo("Europe/Berlin")
