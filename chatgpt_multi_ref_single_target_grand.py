@@ -44,7 +44,7 @@ import numpy as np
 import pandas as pd
 import requests
 
-import chatgpt_btc_rise_multi_ref_buy as base
+import chatgpt_multi_ref_single_target as base
 from laggard_common import add_time_range_arguments, resolve_event_window
 
 
@@ -65,14 +65,14 @@ TOP_N = 30
 MIN_TRADES = 20
 
 # --- Grid / Refs: Default = Werte aus chatgpt_btc_rise_multi_ref_buy.py ---
-REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH", "XRP"]
+REF_SYMBOLS: List[str] = ["BTC", "SOL", "XRP","ETH"]
 
 EVENT_WINDOWS_MIN: List[int] = [60, 180]
 
 THRESHOLDS_PCT: List[float] = [1.0, 2.0]
 
 # Wie viele Refs müssen gleichzeitig in dieselbe Richtung laufen?
-MIN_REFS: List[int] = [1, 2, 3]
+MIN_REFS: List[int] = [1, 2, 3, 4]
 
 HOLD_HORIZONS: Dict[str, int] = {
     "3h": 180,
