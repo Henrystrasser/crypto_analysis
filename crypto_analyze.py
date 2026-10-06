@@ -187,6 +187,9 @@ def analyze_crypto_intraday_long(
 
 
 if __name__ == "__main__":
+    from datetime import datetime as _start_dt
+    from zoneinfo import ZoneInfo as _StartZoneInfo
+    print(f"Start: {_start_dt.now(_StartZoneInfo('Europe/Berlin')):%Y-%m-%d %H:%M:%S %Z}", flush=True)
     temp_symbol = "TNSR/USDT"
     result_df = analyze_crypto_intraday_long(
         symbol=temp_symbol, days=100, offset_hours=2, interval_hours=12

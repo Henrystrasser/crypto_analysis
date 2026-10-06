@@ -398,4 +398,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    from datetime import datetime as _start_dt
+    from zoneinfo import ZoneInfo as _StartZoneInfo
+    print(f"Start: {_start_dt.now(_StartZoneInfo('Europe/Berlin')):%Y-%m-%d %H:%M:%S %Z}", flush=True)
     main()
