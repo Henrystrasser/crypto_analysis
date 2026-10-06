@@ -2,59 +2,50 @@
 # -*- coding: utf-8 -*-
 
 """
-Multi-Reference BUY Backtest + Reference-Coin Equalizer
-========================================================
-
-Dieses Script basiert auf dem bisherigen Multi-Reference BUY Backtest.
-
-Es macht zwei Dinge:
+Multi-Reference BUY Backtest + Reference-Coin Equalizer (Walk-forward)
+======================================================================
 
 1. BASE
-   Event mit dem jeweils konfigurierten Quorum und der identischen 2.00%-Schwelle für
-   BTC / SOL / ETH / XRP / BNB.
+   Event, wenn mindestens das Quorum (1/5 ... 5/5) der Refcoins
+   BTC / SOL / ETH / XRP / BNB im Event-Fenster (Default 60m) die
+   identische 2.00%-Schwelle reißt.
 
 2. EQUALIZED
-   1/5, 2/5, 3/5, 4/5 und 5/5-Events mit individuell optimierten Schwellen je Refcoin.
-   Ziel:
-     - Event-Anzahl möglichst nahe an BASE halten
-     - BTC/SOL/ETH/XRP/BNB innerhalb der Events möglichst
-       gleich häufig abstimmen lassen
-     - keine Gewichtung der Stimmen
-     - jede Stimme zählt exakt 1
+   Dieselben Quoren, aber mit individuellen Schwellen je Refcoin.
+   Ziel der Kalibrierung:
+     - Event-Anzahl möglichst nahe an BASE (+/- 5%)
+     - BTC/SOL/ETH/XRP/BNB stimmen innerhalb der Events möglichst
+       gleich häufig ab (Spread der Participation klein)
+     - Ø Participation nahe Quorum/5
+     - keine Gewichtung: jede Stimme ist binär und zählt exakt 1
 
-Der Equalizer wird für jedes Event-Fenster und jede Richtung separat
-auf exakt denselben 30m-Daten berechnet, die auch der Backtest verwendet.
+Walk-forward (keine Look-ahead-Kalibrierung):
+- Die Schwellen und die Ziel-Event-Anzahl (BASE +/- 5%) werden NUR aus dem
+  zurückliegenden Trainingsfenster (WF_TRAIN_DAYS, Default 180 Tage)
+  bestimmt; gehandelt wird der darauffolgende Kalendermonat
+  (Europe/Berlin), danach rollt das Fenster einen Monat weiter.
+- Kalibriert/gehandelt wird nur, wo Refs UND Target Daten haben.
+  Monate ohne volle Trainings-Historie werden NICHT gehandelt (Ausgabe
+  markiert sie).
+- BASE läuft über exakt denselben Handelszeitraum.
+- Die Suche ist deterministisch (Koordinatenabstieg auf dem
+  0.50-6.00%-Grid): gleiche Daten => gleiches Ergebnis.
 
-Wichtig:
-- UP und DOWN werden separat equalisiert.
-- 60m und 180m sind die primären Equalizer-Fenster.
-- Die übrigen ursprünglichen Multi-Reference-Konfigurationen bleiben
-  optional im normalen Scan erhalten.
-- Der entscheidende A/B-Vergleich steht in der COMPARISON-Tabelle.
-
-BASE:
-    BTC >= 2%, SOL >= 2%, ETH >= 2%, XRP >= 2%, BNB >= 2%
-    mindestens das konfigurierte Quorum
+Der optionale Original-Vollscan (feste Schwellen, keine Kalibrierung)
+läuft über den gesamten Zeitraum.
 
 EQUALIZED-Beispiel:
-    BTC >= 2.3%
-    SOL >= 1.8%
-    ETH >= 2.1%
-    XRP >= 1.7%
-    BNB >= 2.4%
+    BTC >= 2.3%, SOL >= 1.8%, ETH >= 2.1%, XRP >= 1.7%, BNB >= 2.4%
     mindestens 3/5
-
-Jede Coin-Stimme bleibt binär und gleichwertig.
 """
 
 from __future__ import annotations
 
 import argparse
-import math
 import time
-import random
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -97,18 +88,17 @@ EQUALIZER_STEP_PCT = 0.10
 EQUALIZER_MIN_PCT = 0.50
 EQUALIZER_MAX_PCT = 6.00
 
-# Suche.
-EQUALIZER_RESTARTS = 5
-EQUALIZER_STEPS = 50
-EQUALIZER_RANDOM_MOVE_MIN = 1
-EQUALIZER_RANDOM_MOVE_MAX = 4
-EQUALIZER_RANDOM_SEED = 42
+# Deterministische Suche: Koordinatenabstieg auf dem Threshold-Grid,
+# max. Anzahl kompletter Durchläufe über alle Refcoins.
+EQUALIZER_MAX_PASSES = 20
 
-# Event-Anzahl darf idealerweise max. +/- 5% von BASE abweichen.
+# Walk-forward: Trainingsfenster (Tage) vor jedem Handelsmonat.
+WF_TRAIN_DAYS = 180
+
+# Event-Anzahl darf idealerweise max. +/- 5% von BASE (Training) abweichen.
 MAX_EVENT_COUNT_DEVIATION = 0.05
 
-# 3/5 entspricht natürlicherweise 60%.
-TARGET_PARTICIPATION = 0.60
+# Ziel-Participation = Quorum/5 (z.B. 3/5 = 60%); Gewicht im Score.
 TARGET_PARTICIPATION_WEIGHT = 0.20
 
 # Holds.
@@ -194,21 +184,22 @@ def parse_cli_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         dest="run_random",
         action="store_false",
         default=None,
-        help="RANDOM-Baseline überspringen",
+        help="RANDOM-Baseline überspringen (überschreibt RUN_RANDOM)",
     )
 
     p.add_argument(
-        "--equalizer-restarts",
-        type=int,
-        default=EQUALIZER_RESTARTS,
-        help=f"Equalizer Restarts (Default: {EQUALIZER_RESTARTS})",
+        "--random",
+        dest="run_random",
+        action="store_true",
+        default=None,
+        help=f"RANDOM-Baseline berechnen (Default: RUN_RANDOM={RUN_RANDOM})",
     )
 
     p.add_argument(
-        "--equalizer-steps",
+        "--train-days",
         type=int,
-        default=EQUALIZER_STEPS,
-        help=f"Equalizer Schritte je Restart (Default: {EQUALIZER_STEPS})",
+        default=None,
+        help=f"Walk-forward Trainingsfenster in Tagen (Default: {WF_TRAIN_DAYS})",
     )
 
     p.add_argument(
@@ -433,6 +424,8 @@ class MultiRefEvent:
     min_refs: int
     ref_moves: Dict[str, float]
     matched_refs: List[str]
+    # EQUALIZED: individuelle Schwellen je Refcoin (BASE: None).
+    thresholds: Optional[Dict[str, float]] = None
 
     @property
     def score(self) -> int:
@@ -705,134 +698,179 @@ def equalizer_objective(result: dict, baseline_count: int, target_participation:
     return 2.0 + 20.0 * (event_dev - MAX_EVENT_COUNT_DEVIATION) + result["spread"] + TARGET_PARTICIPATION_WEIGHT * mean_dev
 
 
-def clamp_equalizer_threshold(value: float) -> float:
-    return max(EQUALIZER_MIN_PCT, min(EQUALIZER_MAX_PCT, value))
-
-
-def random_neighbor(thresholds: Dict[str, float], rng: random.Random) -> Dict[str, float]:
-    candidate = dict(thresholds)
-    symbols = rng.sample(REF_SYMBOLS, rng.randint(1, 2))
-    for symbol in symbols:
-        candidate[symbol] = clamp_equalizer_threshold(
-            candidate[symbol] + rng.choice([-1, 1]) * rng.randint(EQUALIZER_RANDOM_MOVE_MIN, EQUALIZER_RANDOM_MOVE_MAX) * EQUALIZER_STEP_PCT
-        )
-    return candidate
+def threshold_grid() -> np.ndarray:
+    """Threshold-Grid EQUALIZER_MIN_PCT..EQUALIZER_MAX_PCT, auf 2 Stellen gerundet."""
+    n = int(round((EQUALIZER_MAX_PCT - EQUALIZER_MIN_PCT) / EQUALIZER_STEP_PCT)) + 1
+    return np.round(EQUALIZER_MIN_PCT + np.arange(n) * EQUALIZER_STEP_PCT, 2)
 
 
 def optimize_equalizer(
     moves: np.ndarray,
-    window: int,
     direction: str,
     quorum: int,
-    restarts: int,
-    steps: int,
-    seed_offset: int,
-) -> EqualizedResult:
-    baseline_thresholds = {ref: BASE_THRESHOLD_PCT for ref in REF_SYMBOLS}
-    baseline_arr = np.full(len(REF_SYMBOLS), BASE_THRESHOLD_PCT, dtype=float)
+) -> Optional[EqualizedResult]:
+    """
+    Deterministischer Koordinatenabstieg auf den Grid-Indizes.
+
+    Start: alle Refcoins auf BASE_THRESHOLD_PCT. Pro Durchlauf wird für
+    jeden Refcoin (feste Reihenfolge REF_SYMBOLS) jede Grid-Stufe bei
+    festgehaltenen übrigen Schwellen bewertet; übernommen wird nur eine
+    echte Verbesserung (Tie-Break: näher an BASE, dann kleinere Stufe).
+    Ende, wenn ein Durchlauf nichts verbessert oder nach
+    EQUALIZER_MAX_PASSES. Gleiche Daten => gleiches Ergebnis.
+
+    None, wenn im Trainingsfenster keine BASE-Events existieren.
+    """
+    n_refs = len(REF_SYMBOLS)
+    baseline_arr = np.full(n_refs, BASE_THRESHOLD_PCT, dtype=float)
     baseline = evaluate_thresholds_matrix(moves, baseline_arr, direction, quorum)
     baseline_count = baseline["event_count"]
     if baseline_count <= 0:
-        raise RuntimeError(f"Keine BASE-Events für {window}m {direction} {quorum}/5.")
+        return None
 
-    target_participation = quorum / len(REF_SYMBOLS)
-    if quorum == len(REF_SYMBOLS):
-        return EqualizedResult(
-            thresholds=baseline_thresholds,
-            baseline_count=baseline_count,
-            equalized_count=baseline_count,
-            baseline_participation=baseline["participation"],
-            equalized_participation=baseline["participation"],
-            baseline_spread=baseline["spread"],
-            equalized_spread=baseline["spread"],
-            score=equalizer_objective(baseline, baseline_count, target_participation),
-        )
-    best_thresholds = dict(baseline_thresholds)
-    best_result = baseline
-    best_score = equalizer_objective(baseline, baseline_count, target_participation)
-    eval_cache = {tuple(np.round(baseline_arr, 2)): baseline}
-    rng = random.Random(EQUALIZER_RANDOM_SEED + window * 100 + quorum * 10 + (1 if direction == "UP" else 2) + seed_offset)
+    target_participation = quorum / n_refs
+    grid = threshold_grid()
+    base_idx = int(np.argmin(np.abs(grid - BASE_THRESHOLD_PCT)))
+    cache: Dict[Tuple[int, ...], Tuple[float, dict]] = {}
 
-    for restart in range(restarts):
-        current_thresholds = (
-            dict(baseline_thresholds) if restart == 0 else {
-                ref: clamp_equalizer_threshold(BASE_THRESHOLD_PCT + rng.randint(-8, 8) * EQUALIZER_STEP_PCT)
-                for ref in REF_SYMBOLS
-            }
-        )
-        current_arr = np.array([current_thresholds[r] for r in REF_SYMBOLS])
-        current_key = tuple(np.round(current_arr, 2))
-        current_result = eval_cache.get(current_key)
-        if current_result is None:
-            current_result = evaluate_thresholds_matrix(moves, current_arr, direction, quorum)
-            eval_cache[current_key] = current_result
-        current_score = equalizer_objective(current_result, baseline_count, target_participation)
-        temperature = 0.003
-        for step in range(steps):
-            candidate_thresholds = random_neighbor(current_thresholds, rng)
-            candidate_arr = np.array([candidate_thresholds[r] for r in REF_SYMBOLS])
-            candidate_key = tuple(np.round(candidate_arr, 2))
-            candidate_result = eval_cache.get(candidate_key)
-            if candidate_result is None:
-                candidate_result = evaluate_thresholds_matrix(moves, candidate_arr, direction, quorum)
-                eval_cache[candidate_key] = candidate_result
-            candidate_score = equalizer_objective(candidate_result, baseline_count, target_participation)
-            delta = candidate_score - current_score
-            temperature_now = max(0.00005, temperature * (1.0 - step / max(steps, 1)))
-            if delta <= 0 or rng.random() < math.exp(-delta / temperature_now):
-                current_thresholds, current_result, current_score = candidate_thresholds, candidate_result, candidate_score
-            if current_score < best_score:
-                best_score = current_score
-                best_thresholds = dict(current_thresholds)
-                best_result = current_result
+    def score_of(ix: Tuple[int, ...]) -> Tuple[float, dict]:
+        if ix not in cache:
+            res = evaluate_thresholds_matrix(moves, grid[list(ix)], direction, quorum)
+            cache[ix] = (equalizer_objective(res, baseline_count, target_participation), res)
+        return cache[ix]
+
+    idx = tuple([base_idx] * n_refs)
+    best_score, best_res = score_of(idx)
+
+    # 5/5: jede Stimme ist immer dabei -> Participation immer 100%,
+    # Equalisierung ohne Wirkung; BASE-Schwellen bleiben.
+    if quorum < n_refs:
+        for _ in range(EQUALIZER_MAX_PASSES):
+            improved = False
+            for k in range(n_refs):
+                cur_key = (best_score, abs(idx[k] - base_idx), idx[k])
+                choice = idx
+                for j in range(len(grid)):
+                    if j == idx[k]:
+                        continue
+                    cand = idx[:k] + (j,) + idx[k + 1:]
+                    sc, _ = score_of(cand)
+                    key = (sc, abs(j - base_idx), j)
+                    if sc < best_score - 1e-12 and key < cur_key:
+                        cur_key = key
+                        choice = cand
+                if choice != idx:
+                    idx = choice
+                    best_score, best_res = score_of(idx)
+                    improved = True
+            if not improved:
+                break
 
     return EqualizedResult(
-        thresholds=best_thresholds,
+        thresholds={ref: float(grid[idx[i]]) for i, ref in enumerate(REF_SYMBOLS)},
         baseline_count=baseline_count,
-        equalized_count=best_result["event_count"],
+        equalized_count=best_res["event_count"],
         baseline_participation=baseline["participation"],
-        equalized_participation=best_result["participation"],
+        equalized_participation=best_res["participation"],
         baseline_spread=baseline["spread"],
-        equalized_spread=best_result["spread"],
+        equalized_spread=best_res["spread"],
         score=best_score,
     )
 
 
-def build_equalized_events(
-    ref_data: Dict[str, pd.DataFrame],
+def events_from_matrix(
+    times: np.ndarray,
+    moves: np.ndarray,
     window: int,
     direction: str,
     thresholds: Dict[str, float],
     quorum: int,
-    start_ms: int,
-    end_ms: int,
+    lo_ms: int,
+    hi_ms: int,
+    equalized: bool,
 ) -> List[MultiRefEvent]:
-    common = build_common_reference_times(ref_data)
-    common = common[(common >= start_ms) & (common <= end_ms)]
-    returns = build_return_arrays(ref_data, [window])
-    events = []
-    threshold_arr = np.array([thresholds[r] for r in REF_SYMBOLS], dtype=float)
-    for t in common:
-        t_int = int(t)
-        moves = {}
-        for ref in REF_SYMBOLS:
-            value = returns[(window, ref)].get(t_int)
-            if value is None:
-                moves = {}
-                break
-            moves[ref] = value
-        if len(moves) != len(REF_SYMBOLS):
-            continue
-        vals = np.array([moves[r] for r in REF_SYMBOLS], dtype=float)
-        votes = vals >= threshold_arr if direction == "UP" else vals <= -threshold_arr
-        matched_refs = [ref for ref, vote in zip(REF_SYMBOLS, votes) if vote]
-        if len(matched_refs) >= quorum:
-            events.append(MultiRefEvent(
-                end_ms=t_int, direction=direction, window_min=window,
-                threshold_pct=BASE_THRESHOLD_PCT, min_refs=quorum,
-                ref_moves=moves, matched_refs=matched_refs,
-            ))
+    """Events im Zeitraum [lo_ms, hi_ms] aus der vorberechneten Return-Matrix."""
+    if moves.size == 0:
+        return []
+    sel = (times >= lo_ms) & (times <= hi_ms)
+    t_sel = times[sel]
+    m_sel = moves[sel]
+    thr = np.array([thresholds[r] for r in REF_SYMBOLS], dtype=float)
+    votes = m_sel >= thr[None, :] if direction == "UP" else m_sel <= -thr[None, :]
+    rows = np.flatnonzero(votes.sum(axis=1) >= quorum)
+    events: List[MultiRefEvent] = []
+    for i in rows:
+        events.append(MultiRefEvent(
+            end_ms=int(t_sel[i]),
+            direction=direction,
+            window_min=window,
+            threshold_pct=float("nan") if equalized else BASE_THRESHOLD_PCT,
+            min_refs=quorum,
+            ref_moves={r: float(m_sel[i, k]) for k, r in enumerate(REF_SYMBOLS)},
+            matched_refs=[r for k, r in enumerate(REF_SYMBOLS) if votes[i, k]],
+            thresholds=dict(thresholds) if equalized else None,
+        ))
     return events
+
+
+def event_participation(events: List[MultiRefEvent]) -> Tuple[Dict[str, float], Optional[float]]:
+    """Anteil der Events, in denen jeder Refcoin mitstimmt; Spread = max - min."""
+    if not events:
+        return {r: 0.0 for r in REF_SYMBOLS}, None
+    part = {
+        r: sum(r in e.matched_refs for e in events) / len(events)
+        for r in REF_SYMBOLS
+    }
+    return part, max(part.values()) - min(part.values())
+
+
+# ============================================================
+# WALK-FORWARD
+# ============================================================
+
+BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
+
+@dataclass
+class WFMonth:
+    label: str
+    trade_lo: int
+    trade_hi: int
+    train_lo: int
+    train_hi: int
+    tradeable: bool
+
+
+def build_wf_plan(eff_lo: int, eff_hi: int, train_days: int) -> List[WFMonth]:
+    """Kalendermonate (Europe/Berlin) im effektiven Zeitraum; Training = train_days davor."""
+    plan: List[WFMonth] = []
+    if eff_hi < eff_lo:
+        return plan
+    d = datetime.fromtimestamp(eff_lo / 1000.0, tz=BERLIN_TZ)
+    m0 = datetime(d.year, d.month, 1, tzinfo=BERLIN_TZ)
+    while True:
+        m1 = datetime(m0.year + (m0.month == 12), m0.month % 12 + 1, 1, tzinfo=BERLIN_TZ)
+        m0_ms, m1_ms = utc_ms(m0), utc_ms(m1)
+        if m0_ms > eff_hi:
+            break
+        # Kalendertage in Europe/Berlin (Wandzeit, DST-korrekt).
+        train_lo = utc_ms(m0 - timedelta(days=int(train_days)))
+        plan.append(WFMonth(
+            label=m0.strftime("%Y-%m"),
+            trade_lo=max(m0_ms, eff_lo),
+            trade_hi=min(m1_ms - 1, eff_hi),
+            train_lo=train_lo,
+            train_hi=m0_ms - 1,
+            tradeable=train_lo >= eff_lo,
+        ))
+        m0 = m1
+    return plan
+
+
+def pp_fmt(v: float, width: int = 0) -> str:
+    """Prozentpunkte gerundet, ohne '-0.00'."""
+    r = round(float(v), 2) + 0.0
+    return f"{r:>+{width}.2f} pp" if width else f"{r:+.2f} pp"
 
 
 # ============================================================
@@ -1332,6 +1370,12 @@ def random_positions(
         if len(accepted) >= n_target:
             break
 
+    if len(accepted) < n_target:
+        print(
+            f"   Hinweis RANDOM: nur {len(accepted)}/{n_target} "
+            f"nicht-überlappende Trades möglich."
+        )
+
     return sorted(
         accepted,
         key=lambda p: int(
@@ -1458,189 +1502,138 @@ def min_ref_label(
 
 
 def print_equalizer_report(
-    eq: EqualizedResult,
+    rec: dict,
     window: int,
     direction: str,
     quorum: int,
+    period: str,
+    train_days: int,
 ) -> None:
-    """Druckt JEDE Equalized-Auswertung direkt gegen BASE."""
+    """Walk-forward-Kalibrierung + Out-of-sample-Participation je Kombination."""
 
     print()
     print("=" * 132)
     print(
         f"EQUALIZED vs BASE | {direction} | Event {window}m | "
-        f"{quorum}/5"
+        f"{quorum}/5 | Handel {period}"
     )
     print("=" * 132)
 
-    # --------------------------------------------------------
-    # 1) THRESHOLD-TABELLE
-    # --------------------------------------------------------
-    print("\n[1] THRESHOLDS – BASE vs EQUALIZED")
-    print("-" * 100)
+    # 1) Schwellen je Handelsmonat (aus Training)
     print(
-        f"{'Coin':<10}"
-        f"{'BASE':>14}"
-        f"{'EQUALIZED':>16}"
-        f"{'Delta':>16}"
-        f"{'BASE Signal':>20}"
-        f"{'EQ Signal':>20}"
+        f"\n[1] THRESHOLDS JE HANDELSMONAT – kalibriert auf den "
+        f"{train_days} Tagen davor (BASE = {BASE_THRESHOLD_PCT:.2f}% für alle)"
     )
+    print("-" * 132)
+    print(
+        f"{'Monat':<9}"
+        + "".join(f"{r:>8}" for r in REF_SYMBOLS)
+        + f"{'Train BASE N':>14}{'Train EQ N':>12}"
+        + f"{'Train Spread B→E':>20}   Status"
+    )
+    print("-" * 132)
+    for m in rec["months"]:
+        eq = m["eq"]
+        thr = m["thresholds"]
+        cols = "".join(f"{thr[r]:>7.2f}%" for r in REF_SYMBOLS)
+        if eq is None:
+            print(
+                f"{m['label']:<9}{cols}{0:>14}{'n/a':>12}{'n/a':>20}   "
+                f"Fallback BASE-Schwellen (keine BASE-Events im Training)"
+            )
+        else:
+            print(
+                f"{m['label']:<9}{cols}{eq.baseline_count:>14,}"
+                f"{eq.equalized_count:>12,}"
+                f"{eq.baseline_spread * 100:>9.1f} → {eq.equalized_spread * 100:>5.1f} pp"
+                f"   kalibriert"
+            )
+
+    # 2) Participation im Handelszeitraum (out-of-sample)
+    base_part, base_spread = event_participation(rec["base_events"])
+    eq_part, eq_spread = event_participation(rec["eq_events"])
+
+    print("\n[2] VOTING-PARTICIPATION im Handelszeitraum (out-of-sample) – BASE vs EQUALIZED")
     print("-" * 100)
+    print(f"{'Coin':<18}{'BASE':>14}{'EQUALIZED':>16}{'Delta':>16}")
+    print("-" * 100)
+    has_b = bool(rec["base_events"])
+    has_e = bool(rec["eq_events"])
+
+    def _pc(v: float, ok: bool, w: int) -> str:
+        return f"{v:>{w - 1}.2f}%" if ok else f"{'n/a':>{w}}"
+
+    def _dpp(b_: float, e_: float, w: int) -> str:
+        return pp_fmt(e_ - b_, w - 3) if has_b and has_e else f"{'n/a':>{w}}"
 
     for ref in REF_SYMBOLS:
-        base = BASE_THRESHOLD_PCT
-        new = eq.thresholds[ref]
-        delta = new - base
-        sign = "+" if direction == "UP" else "-"
-
-        print(
-            f"{ref:<10}"
-            f"{base:>13.2f}%"
-            f"{new:>15.2f}%"
-            f"{delta:>+15.2f} pp"
-            f"{sign}{base:.2f}%: 1"
-            f"{sign}{new:.2f}%: 1"
-        )
-
-    print("-" * 100)
-    print(
-        f"{'Quorum':<10}"
-        f"{quorum}/5"
-        f"{'BASE':>16}"
-        f"{'EQ':>16}"
-    )
-
-    # --------------------------------------------------------
-    # 2) PARTICIPATION-TABELLE
-    # --------------------------------------------------------
-    print("\n[2] VOTING-PARTICIPATION – BASE vs EQUALIZED")
-    print("-" * 100)
-    print(
-        f"{'Coin':<10}"
-        f"{'BASE':>16}"
-        f"{'EQUALIZED':>18}"
-        f"{'Delta':>16}"
-        f"{'Richtung':>20}"
-    )
+        b_ = base_part[ref] * 100.0
+        e_ = eq_part[ref] * 100.0
+        print(f"{ref:<18}{_pc(b_, has_b, 14)}{_pc(e_, has_e, 16)}{_dpp(b_, e_, 16):>16}")
     print("-" * 100)
 
-    for ref in REF_SYMBOLS:
-        base = eq.baseline_participation[ref] * 100.0
-        new = eq.equalized_participation[ref] * 100.0
+    def _sp(v: Optional[float]) -> str:
+        return "n/a" if v is None else f"{v * 100:.2f} pp"
 
-        print(
-            f"{ref:<10}"
-            f"{base:>15.2f}%"
-            f"{new:>17.2f}%"
-            f"{new - base:>+15.2f} pp"
-            f"{'→ Equalisierung':>20}"
-        )
+    sp_delta = (
+        pp_fmt((eq_spread - base_spread) * 100, 13)
+        if base_spread is not None and eq_spread is not None
+        else "n/a"
+    )
+    print(f"{'Spread':<18}{_sp(base_spread):>14}{_sp(eq_spread):>16}{sp_delta:>16}   kleiner = besser")
 
+    b_mean = sum(base_part.values()) / len(base_part) * 100.0
+    e_mean = sum(eq_part.values()) / len(eq_part) * 100.0
+    print(
+        f"{'Ø Participation':<18}{_pc(b_mean, has_b, 14)}{_pc(e_mean, has_e, 16)}"
+        f"{_dpp(b_mean, e_mean, 16):>16}   Ziel {quorum / len(REF_SYMBOLS):.0%}"
+    )
+
+    # 3) Events im Handelszeitraum
+    nb, ne = len(rec["base_events"]), len(rec["eq_events"])
+    print("\n[3] EVENTS im Handelszeitraum – BASE vs EQUALIZED")
     print("-" * 100)
-    print(
-        f"{'Spread':<10}"
-        f"{eq.baseline_spread * 100:>15.2f} pp"
-        f"{eq.equalized_spread * 100:>17.2f} pp"
-        f"{(eq.equalized_spread - eq.baseline_spread) * 100:>+15.2f} pp"
-        f"{'kleiner = besser':>20}"
-    )
-
-    base_mean = (
-        sum(eq.baseline_participation.values())
-        / len(eq.baseline_participation)
-        * 100.0
-    )
-    eq_mean = (
-        sum(eq.equalized_participation.values())
-        / len(eq.equalized_participation)
-        * 100.0
-    )
-
-    print(
-        f"{'Ø Participation':<10}"
-        f"{base_mean:>15.2f}%"
-        f"{eq_mean:>17.2f}%"
-        f"{eq_mean - base_mean:>+15.2f} pp"
-        f"{'Ziel 60%':>20}"
-    )
-
-    # --------------------------------------------------------
-    # 3) EVENT-COUNT-TABELLE
-    # --------------------------------------------------------
-    print("\n[3] EVENTS – BASE vs EQUALIZED")
+    print(f"{'Kennzahl':<24}{'BASE':>18}{'EQUALIZED':>20}{'Delta':>18}")
     print("-" * 100)
-
-    event_delta = eq.equalized_count - eq.baseline_count
-    event_delta_pct = (
-        eq.equalized_count / eq.baseline_count - 1.0
-        if eq.baseline_count
-        else float("nan")
-    )
-
+    print(f"{'Raw Events':<24}{nb:>18,}{ne:>20,}{ne - nb:>+18,}")
+    print(f"{'Event Count Δ':<24}{'':>18}{'':>20}{fmt_ratio(ne, nb):>18}")
     print(
-        f"{'Kennzahl':<24}"
-        f"{'BASE':>18}"
-        f"{'EQUALIZED':>20}"
-        f"{'Delta':>18}"
-    )
-    print("-" * 100)
-    print(
-        f"{'Raw Events':<24}"
-        f"{eq.baseline_count:>18,}"
-        f"{eq.equalized_count:>20,}"
-        f"{event_delta:>+18,}"
-    )
-    print(
-        f"{'Event Count Δ':<24}"
-        f"{'0.00%':>18}"
-        f"{event_delta_pct:>20.2%}"
-        f"{event_delta_pct:>+18.2%}"
-    )
-    print(
-        f"{'Event-Count-Toleranz':<24}"
-        f"{MAX_EVENT_COUNT_DEVIATION:>17.2%}"
+        f"{'Toleranz (Training)':<24}{MAX_EVENT_COUNT_DEVIATION:>17.2%} "
         f"{'präferiert':>20}"
     )
 
-    # --------------------------------------------------------
-    # 4) KOMPAKTE COIN-ZUSAMMENFASSUNG
-    # --------------------------------------------------------
-    print("\n[4] GESAMTÜBERSICHT JE REFCOIN")
+    # 4) Gesamtübersicht je Refcoin
+    calibrated = [m for m in rec["months"] if m["eq"] is not None]
+    print("\n[4] GESAMTÜBERSICHT JE REFCOIN (Schwellen über die kalibrierten Monate)")
     print("-" * 100)
     print(
-        f"{'Coin':<10}"
-        f"{'Base Thr.':>13}"
-        f"{'Eq Thr.':>13}"
-        f"{'Thr Δ':>13}"
-        f"{'Base Part.':>15}"
-        f"{'Eq Part.':>15}"
-        f"{'Part. Δ':>15}"
+        f"{'Coin':<10}{'Base Thr.':>11}{'Eq Thr. Ø':>12}{'Eq min':>10}{'Eq max':>10}"
+        f"{'Base Part.':>13}{'Eq Part.':>12}{'Part. Δ':>14}"
     )
     print("-" * 100)
-
     for ref in REF_SYMBOLS:
-        base_thr = BASE_THRESHOLD_PCT
-        eq_thr = eq.thresholds[ref]
-        base_part = eq.baseline_participation[ref] * 100.0
-        eq_part = eq.equalized_participation[ref] * 100.0
-
+        vals = [m["thresholds"][ref] for m in calibrated]
+        b_ = base_part[ref] * 100.0
+        e_ = eq_part[ref] * 100.0
+        if vals:
+            thr_s = f"{np.mean(vals):>11.2f}%{min(vals):>9.2f}%{max(vals):>9.2f}%"
+        else:
+            thr_s = f"{'n/a':>12}{'n/a':>10}{'n/a':>10}"
         print(
-            f"{ref:<10}"
-            f"{base_thr:>12.2f}%"
-            f"{eq_thr:>12.2f}%"
-            f"{eq_thr - base_thr:>+12.2f} pp"
-            f"{base_part:>14.2f}%"
-            f"{eq_part:>14.2f}%"
-            f"{eq_part - base_part:>+14.2f} pp"
+            f"{ref:<10}{BASE_THRESHOLD_PCT:>10.2f}%{thr_s}"
+            f"{_pc(b_, has_b, 13)}{_pc(e_, has_e, 12)}{_dpp(b_, e_, 14):>14}"
         )
+    print(
+        f"Monate: {len(calibrated)} kalibriert, "
+        f"{len(rec['months']) - len(calibrated)} mit Fallback BASE-Schwellen"
+    )
 
-    # --------------------------------------------------------
-    # 5) BACKTEST-TABELLE
-    # --------------------------------------------------------
-    # Die vollständige Hold-by-Hold-Tabelle wird unmittelbar danach
-    # von print_comparison() ausgegeben, sobald BASE/EQUALIZED-Stats
-    # vorliegen.
+
+def fmt_ratio(num: int, den: int) -> str:
+    """num/den - 1 als Prozent; 'n/a' bei den == 0."""
+    if not den:
+        return "n/a"
+    return f"{num / den - 1.0:+.2%}"
 
 
 def print_comparison(
@@ -1653,6 +1646,9 @@ def print_comparison(
     bh: Optional[dict],
     base_event_count: int,
     eq_event_count: int,
+    period: str,
+    rnd_base: Optional[Dict[str, dict]] = None,
+    rnd_eq: Optional[Dict[str, dict]] = None,
 ) -> None:
 
     print()
@@ -1662,69 +1658,66 @@ def print_comparison(
     print(
         f"EQUALIZED vs BASE | "
         f"{direction} | Event {window}m | "
-        f"{quorum}/5 | Target {target_pair}"
+        f"{quorum}/5 | Target {target_pair} | {period}"
     )
     print("=" * 132)
 
+    with_rnd = rnd_base is not None and rnd_eq is not None
+
     print(
         f"{'Hold':>7}"
-        f"{'Base n':>9}"
-        f"{'Base %pos':>12}"
-        f"{'Base Avg':>12}"
-        f"{'Base Cmp':>13}"
-        f"{'Eq n':>9}"
-        f"{'Eq %pos':>12}"
-        f"{'Eq Avg':>12}"
-        f"{'Eq Cmp':>13}"
-        f"{'Eq-Base':>13}"
-        f"{'Eq-vs B&H':>14}"
+        f"{'Base n':>8}"
+        f"{'Base %pos':>10}"
+        f"{'Base Avg':>10}"
+        f"{'Base Cmp':>11}"
+        f"{'Eq n':>7}"
+        f"{'Eq %pos':>9}"
+        f"{'Eq Avg':>10}"
+        f"{'Eq Cmp':>11}"
+        f"{'Eq-Base':>11}"
+        f"{'Eq-vs B&H':>11}"
+        + (f"{'Rnd(B) Cmp':>12}{'Rnd(E) Cmp':>12}" if with_rnd else "")
     )
 
     print("-" * 132)
 
-    bh_roi = (
-        bh["roi"]
-        if bh
-        else None
-    )
+    bh_roi = bh["roi"] if bh else None
 
     for h in HORIZON_NAMES:
-
         b = base_stats[h]
         e = eq_stats[h]
 
         delta = (
-            e["compound"]
-            - b["compound"]
-            if (
-                e["compound"] is not None
-                and b["compound"] is not None
-            )
+            e["compound"] - b["compound"]
+            if e["compound"] is not None and b["compound"] is not None
+            else None
+        )
+        eq_vs_bh = (
+            e["compound"] - bh_roi
+            if e["compound"] is not None and bh_roi is not None
             else None
         )
 
-        eq_vs_bh = (
-            e["compound"]
-            - bh_roi
-            if (
-                e["compound"] is not None
-                and bh_roi is not None
+        rnd_cols = ""
+        if with_rnd:
+            rnd_cols = (
+                f"{fmt_pct(rnd_base[h]['compound']):>12}"
+                f"{fmt_pct(rnd_eq[h]['compound']):>12}"
             )
-            else None
-        )
 
         print(
             f"{h:>7}"
-            f"{b['n']:>9}"
-            f"{fmt_pos(b['pct_pos']):>12}"
-            f"{fmt_pct(b['avg']):>12}"
-            f"{fmt_pct(b['compound']):>13}"
-            f"{e['n']:>9}"
-            f"{fmt_pos(e['pct_pos']):>12}"
-            f"{fmt_pct(e['avg']):>12}"
-            f"{fmt_pct(e['compound']):>13}"
-            f"{fmt_pct(delta):>13}"
-            f"{fmt_pct(eq_vs_bh):>14}"
+            f"{b['n']:>8}"
+            f"{fmt_pos(b['pct_pos']):>10}"
+            f"{fmt_pct(b['avg']):>10}"
+            f"{fmt_pct(b['compound']):>11}"
+            f"{e['n']:>7}"
+            f"{fmt_pos(e['pct_pos']):>9}"
+            f"{fmt_pct(e['avg']):>10}"
+            f"{fmt_pct(e['compound']):>11}"
+            f"{fmt_pct(delta):>11}"
+            f"{fmt_pct(eq_vs_bh):>11}"
+            + rnd_cols
         )
 
     print("-" * 132)
@@ -1733,17 +1726,17 @@ def print_comparison(
         f"Raw Events: "
         f"BASE={base_event_count:,} | "
         f"EQUALIZED={eq_event_count:,} | "
-        f"Diff="
-        f"{(
-            eq_event_count
-            / base_event_count
-            - 1.0
-        ):+.2%}"
+        f"Diff={fmt_ratio(eq_event_count, base_event_count)}"
     )
+    if with_rnd:
+        print(
+            "Rnd(B)/Rnd(E) = RANDOM-Einstiege im selben Handelszeitraum mit exakt "
+            "derselben Trade-Anzahl wie BASE bzw. EQUALIZED (je Hold)."
+        )
 
     if bh:
         print(
-            f"B&H: {fmt_pct(bh['roi'])} | "
+            f"B&H (Handelszeitraum): {fmt_pct(bh['roi'])} | "
             f"{bh['buy_time']} -> "
             f"{bh['sell_time']}"
         )
@@ -1757,6 +1750,8 @@ def print_normal_section(
     min_refs: int,
     stats: Dict[str, dict],
     bh: Optional[dict],
+    period: str = "",
+    random_stats: Optional[Dict[str, dict]] = None,
 ) -> None:
 
     label = min_ref_label(
@@ -1773,6 +1768,7 @@ def print_normal_section(
         f"{threshold:g}% | "
         f"Refs {label} | "
         f"Target {target_pair}"
+        + (f" | {period}" if period else "")
     )
     print("=" * 118)
 
@@ -1783,27 +1779,26 @@ def print_normal_section(
         f"{'Ø ROI':>11}"
         f"{'Compound':>13}"
         f"{'vs B&H':>11}"
+        + (f"{'Rnd n':>8}{'Rnd Cmp':>13}" if random_stats else "")
     )
 
     print("-" * 72)
 
-    bh_roi = (
-        bh["roi"]
-        if bh
-        else None
-    )
+    bh_roi = bh["roi"] if bh else None
 
     for h in HORIZON_NAMES:
         s = stats[h]
 
         vs_bh = (
             s["compound"] - bh_roi
-            if (
-                s["compound"] is not None
-                and bh_roi is not None
-            )
+            if s["compound"] is not None and bh_roi is not None
             else None
         )
+
+        rnd = ""
+        if random_stats:
+            r = random_stats[h]
+            rnd = f"{r['n']:>8}{fmt_pct(r['compound']):>13}"
 
         print(
             f"{h:>7}"
@@ -1812,7 +1807,15 @@ def print_normal_section(
             f"{fmt_pct(s['avg']):>11}"
             f"{fmt_pct(s['compound']):>13}"
             f"{fmt_pct(vs_bh):>11}"
+            + rnd
         )
+
+
+def block_range(from_ms: int, to_ms: int) -> str:
+    """'from YYYY-MM-DD to YYYY-MM-DD' (Europe/Berlin) für Block-Header."""
+    a = datetime.fromtimestamp(from_ms / 1000.0, tz=BERLIN_TZ).strftime("%Y-%m-%d")
+    b = datetime.fromtimestamp(to_ms / 1000.0, tz=BERLIN_TZ).strftime("%Y-%m-%d")
+    return f"from {a} to {b}"
 
 
 def print_trade_examples(
@@ -1936,14 +1939,15 @@ def main(
 
     args = parse_cli_args(argv)
 
-    if args.equalizer_restarts < 1:
-        raise SystemExit(
-            "--equalizer-restarts muss >= 1 sein."
-        )
+    train_days = (
+        WF_TRAIN_DAYS
+        if args.train_days is None
+        else args.train_days
+    )
 
-    if args.equalizer_steps < 1:
+    if train_days < 1:
         raise SystemExit(
-            "--equalizer-steps muss >= 1 sein."
+            "--train-days muss >= 1 sein."
         )
 
     refs_raw = (
@@ -2021,12 +2025,10 @@ def main(
     start_ms = utc_ms(start)
     end_ms = utc_ms(end)
 
-    fetch_end_ms = utc_ms(
-        end
-        + pd.Timedelta(
-            minutes=MAX_HOLD_MIN
-        )
-    )
+    # Kein Nachladen über TO_DATE hinaus: kein Trade darf nach dem
+    # Enddatum schließen. Strategie, RANDOM und HODL enden am selben Punkt
+    # (Close der letzten Kerze mit open_time <= end_ms).
+    fetch_end_ms = end_ms
 
     print("\n" + "=" * 118)
     print(
@@ -2059,9 +2061,17 @@ def main(
         "individuelle Thresholds je Refcoin"
     )
     print(
-        f"Equalizer:  "
-        f"{args.equalizer_restarts} Restarts x "
-        f"{args.equalizer_steps} Schritte"
+        f"Equalizer:  deterministischer Koordinatenabstieg | Grid "
+        f"{EQUALIZER_MIN_PCT:.2f}-{EQUALIZER_MAX_PCT:.2f}% "
+        f"(Schritt {EQUALIZER_STEP_PCT:.2f}) | max. {EQUALIZER_MAX_PASSES} Durchläufe"
+    )
+    print(
+        f"Walk-fwd:   Training {train_days} Tage -> Handel Folgemonat "
+        f"(Europe/Berlin), dann rollen"
+    )
+    print(
+        f"RANDOM:     {'an' if run_random else 'aus'} "
+        f"(--random / --no-random, Config RUN_RANDOM)"
     )
     print(
         f"Fee:        {FEE_BPS} bps/Seite | "
@@ -2103,6 +2113,7 @@ def main(
                 f"\nKeine Kerzen für Referenz {pair}."
             )
 
+        df = df[df["open_time"] <= end_ms].reset_index(drop=True)
         ref_data[base] = df
 
         print(
@@ -2124,6 +2135,9 @@ def main(
         fetch_end_ms,
     )
 
+    # Target-Daten auf <= Enddatum begrenzen (Exits nie nach TO_DATE).
+    target_df = target_df[target_df["open_time"] <= end_ms].reset_index(drop=True)
+
     if target_df.empty:
         raise SystemExit(
             f"Keine Kerzen für Target {target_pair}."
@@ -2139,67 +2153,137 @@ def main(
         end_ms,
     )
 
+    eff_lo, eff_hi = effective_range(
+        start_ms, end_ms, target_df, *ref_data.values()
+    )
+    full_period = block_range(eff_lo, eff_hi)
+
     # --------------------------------------------------------
-    # EQUALIZER
+    # WALK-FORWARD PLAN
     # --------------------------------------------------------
+
+    plan = build_wf_plan(eff_lo, eff_hi, train_days)
+    trade_months = [m for m in plan if m.tradeable]
 
     print(
-        "\n3) Berechne Refcoin-Equalizer ..."
+        f"\n3) Walk-forward-Plan (Training {train_days} Tage, "
+        f"Handel = Folgemonat, Europe/Berlin)"
     )
-
-    equalized: Dict[Tuple[int, int, str], EqualizedResult] = {}
-    eq_matrices: Dict[int, np.ndarray] = {}
-
-    for window in EQUALIZER_WINDOWS_MIN:
-        print(f"\n   Bereite {window}m Return-Matrix vor ...")
-        _, moves, _ = prepare_equalizer_matrix(ref_data, window, start_ms, end_ms)
-        eq_matrices[window] = moves
-        for quorum in EQUALIZER_QUORUMS:
-            for direction in ("UP", "DOWN"):
-                print(f"   {window}m {direction} {quorum}/5 ...")
-                eq = optimize_equalizer(
-                    moves, window, direction, quorum,
-                    args.equalizer_restarts, args.equalizer_steps, len(moves),
-                )
-                equalized[(window, quorum, direction)] = eq
-                print_equalizer_report(eq, window, direction, quorum)
-
-    # --------------------------------------------------------
-    # BASE / EQUALIZED BACKTEST
-    # --------------------------------------------------------
-
     print(
-        "\n4) BASE vs EQUALIZED Backtests ..."
+        f"   Daten Refs + Target: {ms_to_berlin_str(eff_lo)} -> "
+        f"{ms_to_berlin_str(eff_hi)}"
     )
+    for m in plan:
+        if m.tradeable:
+            print(
+                f"   {m.label}: Handel {ms_to_berlin_str(m.trade_lo)} -> "
+                f"{ms_to_berlin_str(m.trade_hi)} | Training "
+                f"{ms_to_berlin_str(m.train_lo)} -> {ms_to_berlin_str(m.train_hi)}"
+            )
+        else:
+            print(
+                f"   {m.label}: NICHT GEHANDELT – keine {train_days} Tage "
+                f"Historie (Daten erst ab {ms_to_berlin_str(eff_lo)})"
+            )
 
-    comparison_cache = {}
+    # --------------------------------------------------------
+    # EQUALIZER (walk-forward) + BASE vs EQUALIZED
+    # --------------------------------------------------------
 
-    for window in EQUALIZER_WINDOWS_MIN:
-        base_dict = build_fixed_events(ref_data, [window], BASE_THRESHOLD_PCT, 1, start_ms, end_ms)
-        for quorum in EQUALIZER_QUORUMS:
-            for direction in ("UP", "DOWN"):
-                base_events = [
-                    e for e in base_dict[(window, direction)]
-                    if len(e.matched_refs) >= quorum
-                ]
-                base_trades = simulate_events(target_df, base_events, target_pair)
-                base_stats = summarize(base_trades)
+    equalized_recs: Dict[Tuple[int, int, str], dict] = {}
+    skipped: Dict[Tuple[int, int, str], str] = {}
+    comparison_cache: Dict[Tuple[int, int, str], tuple] = {}
+    trade_period = ""
 
-                eq = equalized[(window, quorum, direction)]
-                eq_events = build_equalized_events(
-                    ref_data, window, direction, eq.thresholds, quorum, start_ms, end_ms
-                )
-                eq_trades = simulate_events(target_df, eq_events, target_pair)
-                eq_stats = summarize(eq_trades)
+    if not trade_months:
+        print(
+            f"\n   !! Kein handelbarer Monat: Für keinen Monat liegen "
+            f"{train_days} Tage Historie (Refs + Target) vor. "
+            f"BASE/EQUALIZED-Vergleich entfällt."
+        )
+    else:
+        trade_lo = trade_months[0].trade_lo
+        trade_hi = trade_months[-1].trade_hi
+        trade_period = block_range(trade_lo, trade_hi)
+        bh_trade = buy_and_hold(target_df, trade_lo, trade_hi)
+        base_thr = {r: BASE_THRESHOLD_PCT for r in REF_SYMBOLS}
 
-                comparison_cache[(window, quorum, direction)] = (
-                    base_events, base_stats, eq_events, eq_stats
-                )
+        print(
+            f"\n4) Walk-forward Equalizer + BASE vs EQUALIZED "
+            f"(Handel {trade_period}, {len(trade_months)} Monate) ..."
+        )
 
-                print_comparison(
-                    target_pair, window, direction, quorum,
-                    base_stats, eq_stats, bh, len(base_events), len(eq_events)
-                )
+        for window in EQUALIZER_WINDOWS_MIN:
+            print(f"\n   Bereite {window}m Return-Matrix vor ...")
+            times_arr, moves, _ = prepare_equalizer_matrix(
+                ref_data, window, start_ms, end_ms
+            )
+
+            for quorum in EQUALIZER_QUORUMS:
+                for direction in ("UP", "DOWN"):
+                    key = (window, quorum, direction)
+                    print(f"   {window}m {direction} {quorum}/5 ...", flush=True)
+
+                    months = []
+                    eq_events: List[MultiRefEvent] = []
+                    for m in trade_months:
+                        train = (times_arr >= m.train_lo) & (times_arr <= m.train_hi)
+                        eq = optimize_equalizer(moves[train], direction, quorum)
+                        thr = eq.thresholds if eq is not None else dict(base_thr)
+                        months.append({"label": m.label, "eq": eq, "thresholds": thr})
+                        eq_events.extend(events_from_matrix(
+                            times_arr, moves, window, direction, thr, quorum,
+                            m.trade_lo, m.trade_hi, equalized=True,
+                        ))
+
+                    if all(x["eq"] is None for x in months):
+                        skipped[key] = "keine BASE-Events in allen Trainingsfenstern"
+                        print(f"   -> {window}m {direction} {quorum}/5 übersprungen: {skipped[key]}")
+                        continue
+
+                    base_events = events_from_matrix(
+                        times_arr, moves, window, direction, base_thr, quorum,
+                        trade_lo, trade_hi, equalized=False,
+                    )
+
+                    rec = {
+                        "months": months,
+                        "base_events": base_events,
+                        "eq_events": eq_events,
+                    }
+                    equalized_recs[key] = rec
+                    print_equalizer_report(
+                        rec, window, direction, quorum, trade_period, train_days
+                    )
+
+                    base_stats = summarize(simulate_events(target_df, base_events, target_pair))
+                    eq_stats = summarize(simulate_events(target_df, eq_events, target_pair))
+
+                    rnd_b = rnd_e = None
+                    if run_random:
+                        seed = (
+                            RANDOM_SEED + window * 1000 + quorum * 10
+                            + (1 if direction == "DOWN" else 0)
+                        )
+                        rnd_b = random_matched_stats(
+                            target_df, {h: base_stats[h]["n"] for h in HORIZON_NAMES},
+                            trade_lo, trade_hi, np.random.default_rng(seed + 500_000),
+                        )
+                        rnd_e = random_matched_stats(
+                            target_df, {h: eq_stats[h]["n"] for h in HORIZON_NAMES},
+                            trade_lo, trade_hi, np.random.default_rng(seed + 600_000),
+                        )
+
+                    comparison_cache[key] = (
+                        base_events, base_stats, eq_events, eq_stats, rnd_b, rnd_e
+                    )
+
+                    print_comparison(
+                        target_pair, window, direction, quorum,
+                        base_stats, eq_stats, bh_trade,
+                        len(base_events), len(eq_events),
+                        trade_period, rnd_b, rnd_e,
+                    )
 
     # --------------------------------------------------------
     # OPTIONAL ORIGINAL FULL SCAN
@@ -2313,24 +2397,37 @@ def main(
     # --------------------------------------------------------
 
     print("\n" + "=" * 118)
-    print("EQUALIZER-KURZÜBERSICHT")
+    print(
+        "EQUALIZER-KURZÜBERSICHT (Handelszeitraum, out-of-sample"
+        + (f", {trade_period})" if trade_period else ")")
+    )
     print("=" * 118)
     print(
         f"{'Event':>8} {'Vote':>6} {'Dir':>6} "
         f"{'Base N':>10} {'Eq N':>10} {'Event Δ':>10} "
-        f"{'Base Spread':>14} {'Eq Spread':>14}"
+        f"{'Base Spread':>14} {'Eq Spread':>14} {'Monate kal./Fallback':>22}"
     )
     print("-" * 118)
     for window in EQUALIZER_WINDOWS_MIN:
         for quorum in EQUALIZER_QUORUMS:
             for direction in ("UP", "DOWN"):
-                eq = equalized[(window, quorum, direction)]
+                key = (window, quorum, direction)
+                if key not in equalized_recs:
+                    reason = skipped.get(key, "kein handelbarer Monat")
+                    print(f"{window:>7}m {quorum:>2}/5 {direction:>6}   übersprungen: {reason}")
+                    continue
+                rec = equalized_recs[key]
+                nb, ne = len(rec["base_events"]), len(rec["eq_events"])
+                _, b_sp = event_participation(rec["base_events"])
+                _, e_sp = event_participation(rec["eq_events"])
+                n_cal = sum(m["eq"] is not None for m in rec["months"])
+                n_fb = len(rec["months"]) - n_cal
                 print(
                     f"{window:>7}m {quorum:>2}/5 {direction:>6} "
-                    f"{eq.baseline_count:>10,} {eq.equalized_count:>10,} "
-                    f"{(eq.equalized_count / eq.baseline_count - 1.0):>+9.2%} "
-                    f"{eq.baseline_spread * 100:>13.2f} pp "
-                    f"{eq.equalized_spread * 100:>13.2f} pp"
+                    f"{nb:>10,} {ne:>10,} {fmt_ratio(ne, nb):>10} "
+                    f"{('n/a' if b_sp is None else f'{b_sp * 100:.2f} pp'):>14} "
+                    f"{('n/a' if e_sp is None else f'{e_sp * 100:.2f} pp'):>14} "
+                    f"{f'{n_cal}/{n_fb}':>22}"
                 )
 
     # --------------------------------------------------------
@@ -2339,41 +2436,71 @@ def main(
 
     if args.full_scan:
         print("\n" + "=" * 118)
-        print("ORIGINALER MULTI-REFERENCE VOLLSCAN")
+        print(f"ORIGINALER MULTI-REFERENCE VOLLSCAN (feste Schwellen, {full_period})")
         print("=" * 118)
         for window in EVENT_WINDOWS_MIN:
             for threshold in THRESHOLDS_PCT:
                 for min_refs in MIN_REFS:
                     for direction in ("UP", "DOWN"):
-                        trades, stats = result_cache[(window, threshold, min_refs, direction)]
-                        print_normal_section(target_pair, direction, window, threshold, min_refs, stats, bh)
+                        key = (window, threshold, min_refs, direction)
+                        trades, stats = result_cache[key]
+                        print_normal_section(
+                            target_pair, direction, window, threshold, min_refs,
+                            stats, bh, period=full_period,
+                            random_stats=random_cache.get(key) if run_random else None,
+                        )
                         print_trade_examples(trades)
+        if bh:
+            print(
+                f"\nB&H (gesamter Zeitraum): {fmt_pct(bh['roi'])} | "
+                f"{bh['buy_time']} -> {bh['sell_time']}"
+            )
 
     # --------------------------------------------------------
     # FINAL A/B SUMMARY
     # --------------------------------------------------------
 
     print("\n" + "=" * 118)
-    print("FINALER A/B-VERGLEICH: BASE vs EQUALIZED")
+    print(
+        "FINALER A/B-VERGLEICH: BASE vs EQUALIZED (walk-forward"
+        + (f", {trade_period})" if trade_period else ")")
+    )
     print("=" * 118)
     print(
         f"{'Event':>8} {'Vote':>6} {'Dir':>6} {'Hold':>7} "
-        f"{'Base Cmp':>14} {'Eq Cmp':>14} {'Eq-Base':>14} "
-        f"{'Base n':>9} {'Eq n':>9}"
+        f"{'Base Cmp':>12} {'Eq Cmp':>12} {'Eq-Base':>12} "
+        f"{'Base n':>7} {'Eq n':>7}"
+        + (f" {'Rnd(B) Cmp':>12} {'Rnd(E) Cmp':>12}" if run_random else "")
     )
     print("-" * 118)
     for window in EQUALIZER_WINDOWS_MIN:
         for quorum in EQUALIZER_QUORUMS:
             for direction in ("UP", "DOWN"):
-                base_events, base_stats, eq_events, eq_stats = comparison_cache[(window, quorum, direction)]
+                key = (window, quorum, direction)
+                if key not in comparison_cache:
+                    reason = skipped.get(key, "kein handelbarer Monat")
+                    print(f"{window:>7}m {quorum:>2}/5 {direction:>6}   übersprungen: {reason}")
+                    continue
+                _, base_stats, _, eq_stats, rnd_b, rnd_e = comparison_cache[key]
                 for h in HORIZON_NAMES:
                     b = base_stats[h]
                     e = eq_stats[h]
-                    delta = (e["compound"] - b["compound"] if e["compound"] is not None and b["compound"] is not None else None)
+                    delta = (
+                        e["compound"] - b["compound"]
+                        if e["compound"] is not None and b["compound"] is not None
+                        else None
+                    )
+                    rnd = ""
+                    if run_random and rnd_b is not None and rnd_e is not None:
+                        rnd = (
+                            f" {fmt_pct(rnd_b[h]['compound']):>12}"
+                            f" {fmt_pct(rnd_e[h]['compound']):>12}"
+                        )
                     print(
                         f"{window:>7}m {quorum:>2}/5 {direction:>6} {h:>7} "
-                        f"{fmt_pct(b['compound']):>14} {fmt_pct(e['compound']):>14} "
-                        f"{fmt_pct(delta):>14} {b['n']:>9} {e['n']:>9}"
+                        f"{fmt_pct(b['compound']):>12} {fmt_pct(e['compound']):>12} "
+                        f"{fmt_pct(delta):>12} {b['n']:>7} {e['n']:>7}"
+                        + rnd
                     )
 
     print("=" * 118)
