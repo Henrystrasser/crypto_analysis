@@ -463,6 +463,24 @@ def binance_usdt_symbols() -> set[str]:
 
 
 
+def btc_pair_status(base: str) -> Optional[str]:
+   """
+   Prüft, ob BASE/BTC auf Binance Spot handelbar ist.
+
+   Rückgabe: "TRADING", anderer Status (z.B. "BREAK"), "MISSING"
+   oder None, wenn die Prüfung nicht möglich war (offline/API-Fehler).
+   """
+   try:
+       r = SESSION.get(f"{BINANCE}/api/v3/exchangeInfo", timeout=30)
+       r.raise_for_status()
+       for s in r.json()["symbols"]:
+           if s.get("baseAsset") == base and s.get("quoteAsset") == "BTC":
+               return str(s.get("status"))
+       return "MISSING"
+   except Exception:
+       return None
+
+
 def resolve_pair(raw: str, usdt_set: set[str]) -> tuple[str, str]:
 
    base, pair = normalize_symbol(raw)
@@ -1443,7 +1461,12 @@ def random_matched_stats(
 
 
 def _fmt_ts(ts_ms: int) -> str:
-    return pd.to_datetime(int(ts_ms), unit="ms", utc=True).strftime("%Y-%m-%d %H:%M UTC")
+    """Zeitstempel in Europe/Berlin (Sommer-/Winterzeit, CET/CEST)."""
+    return (
+        pd.to_datetime(int(ts_ms), unit="ms", utc=True)
+        .tz_convert("Europe/Berlin")
+        .strftime("%Y-%m-%d %H:%M %Z")
+    )
 
 
 def buy_and_hold_target_btc(
@@ -1488,10 +1511,13 @@ def buy_and_hold_target_btc(
     btc_factor = (1.0 - cost) * (btc_entry / target_entry) * (target_exit / btc_exit) * (1.0 - cost)
     roi = (btc_factor - 1.0) * 100.0
 
+    # Anzeige als echte Kerzen-CLOSE-Zeit (open + Intervall) - passend zum
+    # verwendeten Close-Preis.
+    bar_ms = int(BAR_MIN) * 60_000
     return {
         "roi": float(roi),
-        "buy_time": _fmt_ts(entry_ts),
-        "sell_time": _fmt_ts(exit_ts),
+        "buy_time": _fmt_ts(entry_ts + bar_ms),
+        "sell_time": _fmt_ts(exit_ts + bar_ms),
     }
 
 
@@ -1622,17 +1648,12 @@ def print_section(
 
 
 
-       stable_vals = [
-           float(t[f"roi_stable_{h}"])
-           for t in trades
-           if t.get(f"roi_stable_{h}") is not None
-       ]
-       stable_compound = None
-       if stable_vals:
-           stable_equity = 1.0
-           for v in stable_vals:
-               stable_equity *= 1.0 + v / 100.0
-           stable_compound = (stable_equity - 1.0) * 100.0
+       # Exakt dieselben (non-overlapping) Trades wie die BTC-Spalte,
+       # nur Stablecoin-denominiert.
+       stable_compound = column_stats(
+           filter_non_overlapping(trades, h),
+           f"roi_stable_{h}",
+       )["compound"]
 
        line = (
            f"{h:>7} "
@@ -1880,11 +1901,11 @@ def main(argv: Optional[List[str]] = None) -> None:
 
    end_ms = utc_ms(end)
 
-   fetch_end_ms = utc_ms(
-
-       end + pd.Timedelta(minutes=MAX_HOLD_MIN)
-
-   )
+   # Gemeinsamer Endpunkt für Strategie, RANDOM und HODL:
+   # Daten nur bis end (letzte abgeschlossene Kerze bzw. TO_DATE).
+   # Trades, deren Exit-Kerze nach end läge, werden für diesen Hold
+   # gar nicht eröffnet (kein Exit nach TO_DATE).
+   fetch_end_ms = end_ms
 
 
 
@@ -1966,6 +1987,34 @@ def main(argv: Optional[List[str]] = None) -> None:
 
        "Target-Einstieg = Target-Close dieser Kerze; das Konto startet vollständig in BTC."
 
+   )
+
+   btc_status = btc_pair_status(target_base)
+
+   if btc_status == "TRADING":
+
+       print(f"{target_base}/BTC existiert auf Binance ({target_base}BTC) - direkter Swap möglich.")
+
+   elif btc_status is None:
+
+       print(f"!! {target_base}/BTC-Paar konnte nicht geprüft werden (offline/API-Fehler).")
+
+   else:
+
+       detail = "" if btc_status == "MISSING" else f" (Status {btc_status}, nicht handelbar)"
+
+       print("!" * 118)
+
+       print(
+           f"!! {target_base}/BTC existiert nicht auf Binance{detail}!! "
+           f"Live-Swap nur über USDT möglich (doppelte Gebühren)"
+       )
+
+       print("!" * 118)
+
+   print(
+       "Endpunkt: kein Trade schließt nach dem Zeitraum-Ende; "
+       "Strategie, RANDOM und HODL enden an derselben letzten Kerze."
    )
 
    print("=" * 118)
@@ -2063,6 +2112,12 @@ def main(argv: Optional[List[str]] = None) -> None:
            f"Keine Kerzen für Target {target_pair}."
 
        )
+
+   target_df = target_df[target_df["open_time"] <= end_ms].reset_index(drop=True)
+
+   for base in ref_data:
+
+       ref_data[base] = ref_data[base][ref_data[base]["open_time"] <= end_ms].reset_index(drop=True)
 
 
 
