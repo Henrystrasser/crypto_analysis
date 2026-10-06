@@ -73,13 +73,13 @@ from laggard_common import (
 # ============================================================
 
 REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH", "XRP", "BNB"]
-TARGET_SYMBOL = "PEPE"
+TARGET_SYMBOL = "ENA"
 
 # Ursprüngliche Testfenster.
-EVENT_WINDOWS_MIN = [60, 120, 180]
+EVENT_WINDOWS_MIN = [60]
 
 # Ursprüngliche feste Schwellen für den normalen Scan.
-THRESHOLDS_PCT = [1.0, 1.5, 2.0, 3.0]
+THRESHOLDS_PCT = [1.0, 1.3,1.5,1.8, 2.0,2.3,2.6, 3.0]
 
 # Ursprüngliche MIN_REFS.
 MIN_REFS = [1, 2, 3, 4, 5]
