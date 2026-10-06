@@ -370,6 +370,21 @@ def parse_cli_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 
+def fmt_pct(v: Optional[float]) -> str:
+    if v is None or (
+        isinstance(v, (float, np.floating))
+        and np.isnan(v)
+    ):
+        return "n/a"
+    return f"{v:+.2f}%"
+
+
+def fmt_pos(v: Optional[float]) -> str:
+    if v is None:
+        return "n/a"
+    return f"{v:.0f}%"
+
+
 def min_ref_label(min_refs: int, total_refs: int) -> str:
     """Human-readable label for the quorum, e.g. 3/5."""
     return f"{min_refs}/{total_refs}"
