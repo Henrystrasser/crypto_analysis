@@ -235,7 +235,7 @@ def _interval_to_minutes(interval: str) -> int:
     return int(interval[:-1]) * units[interval[-1]]
 
 
-INTERVAL = "15m"
+INTERVAL = "1h"
 
 # Aus INTERVAL abgeleitet - nicht von Hand koppeln.
 INTERVAL_MINUTES = _interval_to_minutes(INTERVAL)
@@ -255,7 +255,7 @@ BERLIN = ZoneInfo(
 # TARGET
 # ============================================================
 
-TARGET_SYMBOL = "PEPEUSDT"
+TARGET_SYMBOL = "AAVEUSDT"
 
 
 # ============================================================
@@ -292,7 +292,7 @@ QUORUMS = None
 # ZEITRAUM
 # ============================================================
 
-FROM_DATE = "2024-01-01"
+FROM_DATE = "2022-01-01"
 
 # None = letzte vollständig abgeschlossene 15m-Kerze
 TO_DATE = None
@@ -303,7 +303,6 @@ TO_DATE = None
 # ============================================================
 
 EVENT_WINDOWS_MIN = [
-    30,
     60,
     120,
     240,
@@ -363,14 +362,14 @@ VOL_BASELINE_LOOKBACK_BARS = (
 #           (Baseline + aktuelles Fenster) wird automatisch VOR
 #           FROM_DATE nachgeladen (Warmup); Events erst ab FROM_DATE.
 #   False = fester Threshold (Faktor 1.0), kein Warmup nötig.
-VOL_ADAPTIVE = True
+VOL_ADAPTIVE = False
 
 # EVENT_MODE:
 #   "cross" = nur wenn die Bedingung NEU erfüllt ist
 #             (vorherige Kerze hat sie nicht erfüllt)
 #   "level" = jede Kerze, auf der die Bedingung gilt
 #             (nach Hold-Ende wird erneut gekauft, falls weiter erfüllt)
-EVENT_MODE = "cross"
+EVENT_MODE = "level"
 
 # DIRECTION:
 #   "UP"   = Refs steigen um >= Threshold

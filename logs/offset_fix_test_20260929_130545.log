@@ -1,0 +1,64 @@
+##### TEST fall (2026-09-29 13:05:45 CEST)
+2025-10-19  -  2025-10-27
+
+Tägliches Walk-Forward für 1 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: NEXO/USDT      ... letzter Offset 10:00 Berlin | Strat -0.08% | Hold -3.80% | Edge +3.72% | Offsets [10, 10, 10, 10, 10, 10, 10, 10, 10]
+    Erster Trade: BUY 2025-10-19 10:00 CEST @ 1.168 | Letzter Trade: SELL 2025-10-27 22:00 CET @ 1.133 | Hold 2025-10-19 00:00 CEST -> 2025-10-28 00:00 CET
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+     Coin Letzter Offset                        Beste Offsets  Tage                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+NEXO/USDT   10:00 Berlin [10, 10, 10, 10, 10, 10, 10, 10, 10]     9 2025-10-07 bis 2026-09-29              -0.08         -3.80          -3.66              3.72
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+NEXO/USDT        [10, 10, 10, 10, 10, 10, 10, 10, 10]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+##### exit=0
+##### TEST spring (2026-09-29 13:05:57 CEST)
+2025-03-23  -  2025-03-31
+
+Tägliches Walk-Forward für 1 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: NEXO/USDT      ... letzter Offset 07:00 Berlin | Strat -3.30% | Hold -5.16% | Edge +1.86% | Offsets [7, 7, 7, 6, 6, 6, 7, 8, 7]
+    Erster Trade: BUY 2025-03-23 07:00 CET @ 1.138 | Letzter Trade: SELL 2025-03-31 19:00 CEST @ 1.041 | Hold 2025-03-23 00:00 CET -> 2025-04-01 00:00 CEST
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+     Coin Letzter Offset               Beste Offsets  Tage                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+NEXO/USDT   07:00 Berlin [7, 7, 7, 6, 6, 6, 7, 8, 7]     9 2025-03-11 bis 2026-09-29              -3.30         -5.16          -5.01              1.86
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+NEXO/USDT        [7, 7, 7, 6, 6, 6, 7, 8, 7]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+##### exit=0
+##### TEST full default config (2026-09-29 13:06:23 CEST)
+2025-05-15  -  2025-10-01
+
+Tägliches Walk-Forward für 1 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: NEXO/USDT      ... letzter Offset 12:00 Berlin | Strat -22.47% | Hold -2.02% | Edge -20.44% | Offsets [15, 18, 2, 2, 4, 4, 8, 4, 4, 11, 5, 4, 21, 4, 19, 2, 2, 3, 20, 3, 20, 5, 5, 22, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 2, 19, 20, 19, 19, 18, 19, 19, 19, 19, 17, 17, 12, 10, 14, 14, 12, 12, 12, 12, 12, 11, 18, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 7, 14, 14, 14, 13, 10, 7, 10, 10, 7, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 16, 10, 9, 9, 10, 14, 10, 9, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 13, 16, 7, 6, 6, 10, 10, 10, 4, 10, 10, 10, 10, 10, 11, 11, 10, 11, 11, 7, 8, 10, 12, 12, 12]
+    Erster Trade: BUY 2025-05-15 15:00 CEST @ 1.259 | Letzter Trade: SELL 2025-10-02 00:00 CEST @ 1.256 | Hold 2025-05-15 00:00 CEST -> 2025-10-02 00:00 CEST
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+     Coin Letzter Offset                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     Beste Offsets  Tage                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+NEXO/USDT   12:00 Berlin [15, 18, 2, 2, 4, 4, 8, 4, 4, 11, 5, 4, 21, 4, 19, 2, 2, 3, 20, 3, 20, 5, 5, 22, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 2, 19, 20, 19, 19, 18, 19, 19, 19, 19, 17, 17, 12, 10, 14, 14, 12, 12, 12, 12, 12, 11, 18, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 7, 14, 14, 14, 13, 10, 7, 10, 10, 7, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 16, 10, 9, 9, 10, 14, 10, 9, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 13, 16, 7, 6, 6, 10, 10, 10, 4, 10, 10, 10, 10, 10, 11, 11, 10, 11, 11, 7, 8, 10, 12, 12, 12]   140 2025-05-03 bis 2026-09-29             -22.47         -2.02          -1.88            -20.44
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+NEXO/USDT        [15, 18, 2, 2, 4, 4, 8, 4, 4, 11, 5, 4, 21, 4, 19, 2, 2, 3, 20, 3, 20, 5, 5, 22, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 2, 19, 20, 19, 19, 18, 19, 19, 19, 19, 17, 17, 12, 10, 14, 14, 12, 12, 12, 12, 12, 11, 18, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 7, 14, 14, 14, 13, 10, 7, 10, 10, 7, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 16, 10, 9, 9, 10, 14, 10, 9, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 13, 16, 7, 6, 6, 10, 10, 10, 4, 10, 10, 10, 10, 10, 11, 11, 10, 11, 11, 7, 8, 10, 12, 12, 12]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+elapsed 74.69s
+##### exit=0

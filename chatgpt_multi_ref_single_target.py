@@ -77,10 +77,10 @@ REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH","XRP","BNB"]
 TARGET_SYMBOL = "ENA"
 
 # Mehrere Event-Fenster testen.
-EVENT_WINDOWS_MIN = [60, 180]
+EVENT_WINDOWS_MIN = [60,120,180]
 
 # Schwellen separat testen, damit Nachbarn gut sichtbar sind.
-THRESHOLDS_PCT = [1.0, 1.5,2.0,2.5,3.0]
+THRESHOLDS_PCT = [1.0, 1.5,2.0,3.0]
 
 # Wie viele Referenzcoins müssen gleichzeitig in dieselbe Richtung laufen?
 # Bei 3 Refs:
@@ -107,7 +107,7 @@ HOLD_HORIZONS: Dict[str, int] = {
     "192h": 11520,
 }
 
-FROM_DATE: Optional[str] = "2026-01-01"
+FROM_DATE: Optional[str] = "2025-01-01"
 TO_DATE: Optional[str] = "2026-12-28"
 LOOKBACK_DAYS = 400
 

@@ -1,0 +1,22 @@
+##### Full run, Konfig 2025-05-15..2025-10-01, Lookback 10 (Kopie mit nur diesen 2 Parametern geändert; Datei-Defaults sind aktuell 2026-10-01 / 100) (2026-09-29 15:58:03 CEST)
+2025-05-15  -  2025-10-01
+
+Tägliches Walk-Forward für 1 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: NEXO/USDT      ... letzter Offset 12:00 Berlin | Strat -15.65% | Hold -2.02% | Edge -13.63% | Trades 136 | übersprungen (Overlap) 4 | Offsets [18, 18, 1, 2, 4, 4, 8, 4, 4, 11, 5, 4, 12, 4, 19, 21, 2, 3, 20, 3, 20, 5, 5, 3, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 16, 19, 19, 21, 19, 19, 19, 19, 19, 19, 17, 15, 10, 10, 14, 12, 12, 12, 12, 12, 11, 11, 12, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 13, 13, 14, 14, 14, 14, 7, 10, 14, 7, 9, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 14, 9, 9, 9, 14, 14, 10, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 14, 16, 7, 6, 6, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 17, 10, 11, 11, 7, 8, 10, 10, 10, 12]
+    Erster Trade: BUY 2025-05-15 18:00 CEST @ 1.275 | Letzter Trade: SELL 2025-10-02 00:00 CEST @ 1.256 | Hold 2025-05-15 00:00 CEST -> 2025-10-02 00:00 CEST
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+     Coin Letzter Offset                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      Beste Offsets  Tage  Trades  Übersprungen (Overlap)                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+NEXO/USDT   12:00 Berlin [18, 18, 1, 2, 4, 4, 8, 4, 4, 11, 5, 4, 12, 4, 19, 21, 2, 3, 20, 3, 20, 5, 5, 3, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 16, 19, 19, 21, 19, 19, 19, 19, 19, 19, 17, 15, 10, 10, 14, 12, 12, 12, 12, 12, 11, 11, 12, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 13, 13, 14, 14, 14, 14, 7, 10, 14, 7, 9, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 14, 9, 9, 9, 14, 14, 10, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 14, 16, 7, 6, 6, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 17, 10, 11, 11, 7, 8, 10, 10, 10, 12]   140     136                       4 2025-05-03 bis 2026-09-29             -15.65         -2.02          -1.88            -13.63
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+NEXO/USDT        [18, 18, 1, 2, 4, 4, 8, 4, 4, 11, 5, 4, 12, 4, 19, 21, 2, 3, 20, 3, 20, 5, 5, 3, 3, 5, 6, 6, 6, 5, 4, 4, 6, 6, 9, 9, 9, 16, 19, 19, 21, 19, 19, 19, 19, 19, 19, 17, 15, 10, 10, 14, 12, 12, 12, 12, 12, 11, 11, 12, 18, 18, 11, 10, 10, 10, 7, 7, 3, 3, 3, 6, 6, 6, 6, 13, 13, 14, 14, 14, 14, 7, 10, 14, 7, 9, 9, 9, 9, 9, 9, 9, 11, 11, 16, 17, 17, 14, 9, 9, 9, 14, 14, 10, 9, 9, 7, 10, 14, 10, 7, 7, 7, 13, 10, 14, 16, 7, 6, 6, 9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 17, 10, 11, 11, 7, 8, 10, 10, 10, 12]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Entscheidung um 00:00 Berlin: im Lookback zählen nur Trades, deren Verkaufs-Kerze vor Mitternacht geschlossen ist (kein Lookahead). Ein Trade, dessen Kauf vor dem Verkauf des zuletzt ausgeführten Trades läge, wird übersprungen (kein Overlap). Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+elapsed 71.247720970s
+##### exit=0

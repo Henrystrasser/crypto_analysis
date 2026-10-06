@@ -1,451 +1,1628 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-chatgpt_event_mode_compare.py
-
-EVENT-MODE-VERGLEICH: LEVEL vs CROSS
-(gleiche Strategie wie chatgpt_multi_ref_single_target.py)
-
-Die Multi-Ref-Strategie wird mit IDENTISCHEN Einstellungen zweimal gerechnet:
-
-  level = jede (gemeinsame Ref-)Kerze, auf der die Bedingung gilt.
-          Nach Hold-Ende wird erneut gekauft, falls sie weiter gilt.
-          (= Verhalten von chatgpt_multi_ref_single_target.py)
-
-  cross = nur Kerzen, auf denen die Bedingung NEU erfüllt ist
-          (vorherige gemeinsame Kerze hat sie nicht erfüllt).
-
-Bedingung (je Window / Threshold / MIN_REFS / Richtung):
-  UP   = mindestens MIN_REFS Refs mit Move >= +Threshold über das Window
-  DOWN = mindestens MIN_REFS Refs mit Move <= -Threshold über das Window
-
-Alles andere ist identisch und kommt aus dem (gefixten) Basisscript:
-Refs, Target, Windows, Thresholds, MIN_REFS, Interval, Holds, Fees,
-Zeitraum, Non-overlap je Hold (Re-Entry exakt am Hold-Ende erlaubt),
-exakte Entry-Kerze (fehlt sie, z.B. vor dem Listing, wird das Event
-verworfen), exakte Exit-Kerze.
-
-Signal = Ende der Referenz-Kerze, Kauf zum Close der Target-Kerze.
-Alle Zeiten Europe/Berlin. Kein CSV.
-
-Config unten in VS Code ändern; CLI-Flags sind nur optionale Overrides.
-"""
-
-from __future__ import annotations
-
-import argparse
 import time
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-
-import chatgpt_multi_ref_single_target as base
-from laggard_common import add_time_range_arguments, resolve_event_window
+import requests
 
 
 # ============================================================
-# CONFIG (hier in VS Code ändern)
+# CONFIG
 # ============================================================
 
-REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH", "XRP", "BNB"]
-TARGET_SYMBOL = "ENA"
+API_URL = "https://data-api.binance.vision/api/v3/klines"
 
-EVENT_WINDOWS_MIN = [60, 180]
-THRESHOLDS_PCT = [1.0, 1.5, 2.0, 2.5, 3.0]
-MIN_REFS = [1, 2, 3, 4, 5]
+TARGET = "ENAUSDT"
 
-# "UP" und/oder "DOWN" (wie im Basisscript beide).
-DIRECTIONS = ["UP", "DOWN"]
+REFS = [
+    "BTCUSDT",
+    "ETHUSDT",
+    "BNBUSDT",
+    "SOLUSDT",
+    "XRPUSDT",
+]
 
-HOLD_HORIZONS: Dict[str, int] = {
-    "3h": 180,
-    "6h": 360,
-    "12h": 720,
-    "24h": 1440,
-    "48h": 2880,
-    "60h": 3600,
-    "72h": 4320,
-    "78h": 4680,
-    "84h": 5040,
-    "90h": 5400,
-    "96h": 5760,
-    "120h": 7200,
-    "168h": 10080,
-    "192h": 11520,
-}
+INTERVAL = "1h"
+INTERVAL_MINUTES = 60
 
-# Zeitraum (Europe/Berlin). TO_DATE in der Zukunft -> letzte geschlossene Kerze.
-# FROM_DATE=None -> LOOKBACK_DAYS rückwärts ab jetzt.
-FROM_DATE: Optional[str] = "2024-01-01"
-TO_DATE: Optional[str] = "2026-12-28"
-LOOKBACK_DAYS = 400
-
-KLINE_INTERVAL = "1h"
-
-FEE_BPS = 7.5
-SLIPPAGE_BPS = 0.0
-
-# Vergleichskriterium für "besser": "compound" oder "avg" (Ø ROI je Trade).
-PRIMARY_METRIC = "compound"
-
-# True = Level-Events zusätzlich mit der (langsamen) Original-Detektion
-# des Basisscripts gegenprüfen.
-VERIFY_DETECT = False
+START_DATE = "2024-01-01"
+END_DATE = None
 
 
 # ============================================================
-# BASIS KONFIGURIEREN
+# FEES
 # ============================================================
 
-def apply_config_to_base() -> None:
-    """Grid/Fees in das Basismodul schreiben (gleiche Mathematik wie dort)."""
-    bar_min = base.interval_to_minutes(KLINE_INTERVAL)
-    if any(w % bar_min != 0 for w in EVENT_WINDOWS_MIN):
-        raise SystemExit("Alle EVENT_WINDOWS_MIN müssen durch KLINE_INTERVAL teilbar sein.")
-    if any(h % bar_min != 0 for h in HOLD_HORIZONS.values()):
-        raise SystemExit("Alle HOLD_HORIZONS müssen durch KLINE_INTERVAL teilbar sein.")
-    if any(x <= 0 for x in THRESHOLDS_PCT):
-        raise SystemExit("THRESHOLDS_PCT müssen > 0 sein.")
-    if any(d not in ("UP", "DOWN") for d in DIRECTIONS):
-        raise SystemExit("DIRECTIONS: nur 'UP' und/oder 'DOWN'.")
-
-    base.KLINE_INTERVAL = KLINE_INTERVAL
-    base.BAR_MIN = bar_min
-    base.EVENT_WINDOWS_MIN = list(EVENT_WINDOWS_MIN)
-    base.THRESHOLDS_PCT = list(THRESHOLDS_PCT)
-    base.MIN_REFS = list(MIN_REFS)
-    base.HOLD_HORIZONS = dict(HOLD_HORIZONS)
-    base.WINDOW_BARS = {w: w // bar_min for w in EVENT_WINDOWS_MIN}
-    base.HOLD_BARS = {h: m // bar_min for h, m in HOLD_HORIZONS.items()}
-    base.MAX_HOLD_MIN = max(HOLD_HORIZONS.values())
-    base.HORIZON_NAMES = list(HOLD_HORIZONS.keys())
-    base.FEE_BPS = FEE_BPS
-    base.SLIPPAGE_BPS = SLIPPAGE_BPS
+FEE_PER_SIDE = 0.00075      # 7.5 bps = 0.075%
 
 
 # ============================================================
-# EVENTS: LEVEL + CROSS
+# EVENT TESTS
 # ============================================================
 
-Key = Tuple[str, int, float, int]  # direction, window, threshold, min_refs
+EVENT_WINDOWS_MIN = [
+    60,
+    120,
+    240,
+    360,
+]
+
+BASE_THRESHOLDS = [
+    0.01,       # 1%
+    0.02,       # 2%
+]
 
 
-def detect_level_and_cross(
-    ref_data: Dict[str, pd.DataFrame],
-    start_ms: int,
-    end_ms: int,
-) -> Tuple[Dict[Key, List[base.MultiRefEvent]], Dict[Key, set]]:
-    """
-    Level-Events identisch zu base.detect_multi_ref_events (vektorisiert),
-    plus Menge der Cross-Zeitpunkte (Bedingung neu erfüllt).
+# ============================================================
+# HOLD TESTS
+# ============================================================
 
-    Zeitachse = gemeinsame Ref-Kerzen in [start, end] (wie im Basisscript).
-    "Vorherige Kerze" = vorherige gemeinsame Kerze; ungültige Moves (NaN)
-    zählen als "Bedingung nicht erfüllt".
-    """
-    common: Optional[set] = None
-    for df in ref_data.values():
-        t = set(int(x) for x in df["open_time"].tolist())
-        common = t if common is None else common & t
-    common_arr = np.array(
-        sorted(t for t in (common or set()) if start_ms <= t <= end_ms),
-        dtype=np.int64,
+HOLDS_HOURS = [
+    3,
+    6,
+    12,
+    24,
+    48,
+    60,
+    72,
+    78,
+    84,
+    90,
+    96,
+    120,
+    192,
+]
+
+
+# ============================================================
+# VOLATILITY ADAPTIVE THRESHOLD
+# ============================================================
+
+USE_VOL_ADAPTIVE_THRESHOLD = True
+
+VOL_LOOKBACK_BARS = 96       # 24h
+VOL_BASELINE_BARS = 2880     # 30 Tage
+
+VOL_FACTOR_MIN = 0.5
+VOL_FACTOR_MAX = 3.0
+
+THRESHOLD_INTENSITY = 1.0
+
+
+# ============================================================
+# TIME CONSTANTS
+# ============================================================
+
+MS_PER_MINUTE = 60_000
+
+
+# ============================================================
+# DATE HELPERS
+# ============================================================
+
+def date_to_ms(date_str):
+    dt = datetime.strptime(
+        date_str,
+        "%Y-%m-%d",
+    ).replace(
+        tzinfo=timezone.utc
     )
 
-    refs = list(ref_data.keys())
-    level: Dict[Key, List[base.MultiRefEvent]] = {}
-    cross: Dict[Key, set] = {}
+    return int(dt.timestamp() * 1000)
 
-    for window in EVENT_WINDOWS_MIN:
-        rows = []
-        for ref in refs:
-            df = ref_data[ref]
-            ser = base.build_reference_move_series(df, [window])[window]
-            rows.append(
-                pd.Series(ser.to_numpy(), index=df["open_time"].to_numpy())
-                .reindex(common_arr)
-                .to_numpy(dtype=np.float64)
+
+def get_last_closed_candle_ms():
+    now_ms = int(time.time() * 1000)
+
+    interval_ms = (
+        INTERVAL_MINUTES * MS_PER_MINUTE
+    )
+
+    current_open = (
+        now_ms // interval_ms
+    ) * interval_ms
+
+    return current_open - interval_ms
+
+
+# ============================================================
+# BINANCE DOWNLOAD
+# ============================================================
+
+def fetch_klines(
+    symbol,
+    start_ms,
+    end_ms,
+):
+    """
+    Robuster Binance Downloader mit Retries.
+    """
+
+    all_rows = []
+    current = start_ms
+
+    session = requests.Session()
+
+    max_retries = 8
+
+    while current < end_ms:
+
+        params = {
+            "symbol": symbol,
+            "interval": INTERVAL,
+            "startTime": current,
+            "endTime": end_ms,
+            "limit": 1000,
+        }
+
+        rows = None
+
+        for attempt in range(
+            1,
+            max_retries + 1,
+        ):
+
+            try:
+
+                response = session.get(
+                    API_URL,
+                    params=params,
+                    timeout=(10, 60),
+                )
+
+                response.raise_for_status()
+
+                rows = response.json()
+
+                break
+
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError,
+            ) as exc:
+
+                if attempt >= max_retries:
+                    raise RuntimeError(
+                        f"{symbol}: Download nach "
+                        f"{max_retries} Versuchen fehlgeschlagen.\n"
+                        f"Letzter Fehler: {exc}"
+                    ) from exc
+
+                wait_seconds = min(
+                    2 ** (attempt - 1),
+                    30,
+                )
+
+                print(
+                    f"      Netzwerkproblem "
+                    f"(Versuch {attempt}/{max_retries}) "
+                    f"-> Retry in {wait_seconds}s ..."
+                )
+
+                time.sleep(wait_seconds)
+
+            except requests.exceptions.HTTPError as exc:
+
+                status = response.status_code
+
+                if status in (
+                    418,
+                    429,
+                    500,
+                    502,
+                    503,
+                    504,
+                ):
+
+                    if attempt >= max_retries:
+                        raise RuntimeError(
+                            f"{symbol}: HTTP {status} "
+                            f"nach {max_retries} Versuchen."
+                        ) from exc
+
+                    wait_seconds = min(
+                        2 ** attempt,
+                        60,
+                    )
+
+                    print(
+                        f"      Binance HTTP {status} "
+                        f"(Versuch {attempt}/{max_retries}) "
+                        f"-> Retry in {wait_seconds}s ..."
+                    )
+
+                    time.sleep(wait_seconds)
+
+                else:
+                    raise
+
+        if rows is None:
+            raise RuntimeError(
+                f"{symbol}: Kein gültiger Download."
             )
-        M = np.vstack(rows) if rows else np.empty((0, 0))
-        valid = ~np.isnan(M).any(axis=0)
 
-        for threshold in THRESHOLDS_PCT:
-            hits = {"UP": M >= threshold, "DOWN": M <= -threshold}
-            for direction in DIRECTIONS:
-                hit = hits[direction]
-                count = hit.sum(axis=0)
-                for min_refs in MIN_REFS:
-                    cond = valid & (count >= min_refs)
-                    prev = np.concatenate(([False], cond[:-1]))
-                    is_cross = cond & ~prev
-                    key = (direction, window, threshold, min_refs)
-                    evs = []
-                    for i in np.flatnonzero(cond):
-                        evs.append(
-                            base.MultiRefEvent(
-                                end_ms=int(common_arr[i]),
-                                direction=direction,
-                                window_min=window,
-                                threshold_pct=threshold,
-                                min_refs=min_refs,
-                                ref_moves={r: float(M[j, i]) for j, r in enumerate(refs)},
-                                matched_refs=[r for j, r in enumerate(refs) if hit[j, i]],
-                            )
-                        )
-                    level[key] = evs
-                    cross[key] = set(int(t) for t in common_arr[is_cross])
-    return level, cross
+        if not rows:
+            break
 
+        all_rows.extend(rows)
 
-def verify_against_base(
-    level: Dict[Key, List[base.MultiRefEvent]],
-    ref_data: Dict[str, pd.DataFrame],
-    ref_pairs: Dict[str, str],
-    start_ms: int,
-    end_ms: int,
-) -> None:
-    print("   Prüfe Level-Events gegen Original-Detektion (langsam) ...")
-    orig = base.detect_multi_ref_events(
-        ref_data, ref_pairs, EVENT_WINDOWS_MIN, THRESHOLDS_PCT, MIN_REFS, start_ms, end_ms,
+        last_open_time = rows[-1][0]
+
+        next_start = (
+            last_open_time
+            + INTERVAL_MINUTES * MS_PER_MINUTE
+        )
+
+        if next_start <= current:
+            break
+
+        current = next_start
+
+        if len(rows) < 1000:
+            break
+
+        time.sleep(0.15)
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    columns = [
+        "open_time",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "close_time",
+        "quote_volume",
+        "trades",
+        "taker_base_volume",
+        "taker_quote_volume",
+        "ignore",
+    ]
+
+    df = pd.DataFrame(
+        all_rows,
+        columns=columns,
     )
-    bad = 0
-    for (direction, window, threshold, min_refs), evs in level.items():
-        a = [e.end_ms for e in evs]
-        b = [e.end_ms for e in orig.get((window, threshold, min_refs, direction), [])]
-        if a != b:
-            bad += 1
-    print(f"   Abweichende Konfigurationen: {bad}/{len(level)}")
-    if bad:
-        raise SystemExit("Level-Events weichen von der Original-Detektion ab.")
+
+    df["open_time"] = pd.to_datetime(
+        df["open_time"],
+        unit="ms",
+        utc=True,
+    )
+
+    df["close"] = pd.to_numeric(
+        df["close"],
+        errors="coerce",
+    )
+
+    df = df[
+        [
+            "open_time",
+            "close",
+        ]
+    ].copy()
+
+    df = df.drop_duplicates(
+        subset="open_time"
+    )
+
+    df = df.sort_values(
+        "open_time"
+    )
+
+    df = df.set_index(
+        "open_time"
+    )
+
+    return df
 
 
 # ============================================================
-# STATISTIK
+# DATA DOWNLOAD
 # ============================================================
 
-def stats_for(trades: List[dict], hold: str) -> dict:
-    kept = base.filter_non_overlapping(trades, hold)
-    vals = np.array([float(t[f"roi_{hold}"]) for t in kept], dtype=np.float64)
-    if len(vals) == 0:
-        return {"n": 0, "compound": None, "avg": None, "median": None, "hit": None}
+def load_all_data():
+
+    start_ms = date_to_ms(
+        START_DATE
+    )
+
+    if END_DATE is None:
+        end_ms = get_last_closed_candle_ms()
+    else:
+        end_ms = date_to_ms(
+            END_DATE
+        )
+
+    symbols = []
+
+    for symbol in [TARGET] + REFS:
+        if symbol not in symbols:
+            symbols.append(symbol)
+
+    print()
+    print("=" * 80)
+    print("DOWNLOAD")
+    print("=" * 80)
+
+    print(
+        f"Target : {TARGET}"
+    )
+
+    print(
+        f"Refs   : {', '.join(REFS)}"
+    )
+
+    print(
+        f"From   : {START_DATE}"
+    )
+
+    print(
+        f"To     : "
+        f"{END_DATE if END_DATE else 'now'}"
+    )
+
+    print()
+
+    data = {}
+
+    for i, symbol in enumerate(
+        symbols,
+        start=1,
+    ):
+
+        print(
+            f"[{i:>2}/{len(symbols):>2}] "
+            f"Downloading {symbol} ..."
+        )
+
+        df = fetch_klines(
+            symbol=symbol,
+            start_ms=start_ms,
+            end_ms=end_ms,
+        )
+
+        if df.empty:
+            raise RuntimeError(
+                f"Keine Daten für {symbol}"
+            )
+
+        data[symbol] = df
+
+        print(
+            f"      {len(df):,} candles"
+        )
+
+    return data
+
+
+# ============================================================
+# BUILD CORE DATAFRAME
+# ============================================================
+
+def build_dataframe(data):
+
+    frames = []
+
+    for symbol in [
+        TARGET
+    ] + REFS:
+
+        frame = data[symbol][
+            ["close"]
+        ].rename(
+            columns={
+                "close": symbol
+            }
+        )
+
+        frames.append(frame)
+
+    df = pd.concat(
+        frames,
+        axis=1,
+        join="inner",
+    )
+
+    df = df.dropna()
+    df = df.sort_index()
+
+    return df
+
+
+# ============================================================
+# VOLATILITY
+# ============================================================
+
+def add_volatility_data(df):
+
+    if not USE_VOL_ADAPTIVE_THRESHOLD:
+
+        df["market_vol"] = np.nan
+        df["vol_baseline"] = np.nan
+        df["vol_factor"] = 1.0
+
+        return df
+
+    ref_vols = []
+
+    for ref in REFS:
+
+        ret = df[ref].pct_change()
+
+        rolling_std = (
+            ret
+            .rolling(
+                VOL_LOOKBACK_BARS
+            )
+            .std()
+        )
+
+        ref_vols.append(
+            rolling_std.rename(ref)
+        )
+
+    vol_df = pd.concat(
+        ref_vols,
+        axis=1,
+    )
+
+    df["market_vol"] = (
+        vol_df.median(axis=1)
+    )
+
+    df["vol_baseline"] = (
+        df["market_vol"]
+        .rolling(
+            VOL_BASELINE_BARS
+        )
+        .median()
+        .shift(1)
+    )
+
+    df["vol_factor"] = (
+        df["market_vol"]
+        / df["vol_baseline"]
+    )
+
+    df["vol_factor"] = (
+        df["vol_factor"]
+        .replace(
+            [np.inf, -np.inf],
+            np.nan,
+        )
+        .clip(
+            lower=VOL_FACTOR_MIN,
+            upper=VOL_FACTOR_MAX,
+        )
+        .fillna(1.0)
+    )
+
+    return df
+
+
+# ============================================================
+# BUILD MULTI-REF SIGNAL
+# ============================================================
+
+def build_signals(
+    df,
+    event_window_min,
+    base_threshold,
+):
+    """
+    Returns:
+
+    level_signal:
+        Bedingung aktuell erfüllt
+
+    cross_signal:
+        Übergang FALSE -> TRUE
+
+    ref_count:
+        Anzahl der Refs oberhalb der Schwelle
+
+    effective_threshold:
+        volatilitätsangepasste Schwelle
+    """
+
+    window_bars = (
+        event_window_min
+        // INTERVAL_MINUTES
+    )
+
+    if window_bars < 1:
+        raise ValueError(
+            "Event Window muss mindestens 15 Minuten sein."
+        )
+
+    effective_threshold = (
+        base_threshold
+        * THRESHOLD_INTENSITY
+        * df["vol_factor"]
+    )
+
+    ref_returns = pd.DataFrame(
+        index=df.index
+    )
+
+    for ref in REFS:
+
+        ref_returns[ref] = (
+            df[ref]
+            / df[ref].shift(window_bars)
+            - 1.0
+        )
+
+    ref_count = (
+        ref_returns.gt(
+            effective_threshold,
+            axis=0,
+        )
+        .sum(axis=1)
+    )
+
+    level_signal = (
+        ref_count
+        >= len(REFS) * 0 + 3
+    )
+
+    # --------------------------------------------------------
+    # Cross = FALSE -> TRUE
+    # --------------------------------------------------------
+
+    previous_level = (
+        level_signal
+        .shift(1)
+        .fillna(False)
+        .astype(bool)
+    )
+
+    cross_signal = (
+        level_signal
+        & ~previous_level
+    )
+
+    result = pd.DataFrame(
+        index=df.index
+    )
+
+    result["ref_count"] = ref_count
+
+    result["effective_threshold"] = (
+        effective_threshold
+    )
+
+    result["level_signal"] = (
+        level_signal
+    )
+
+    result["cross_signal"] = (
+        cross_signal
+    )
+
+    return result
+
+
+# ============================================================
+# STATISTICS
+# ============================================================
+
+def compound_return(trades):
+
+    equity = 1.0
+
+    for trade in trades:
+
+        equity *= (
+            1.0
+            + trade["net_return"]
+        )
+
+    return equity - 1.0
+
+
+def summarize_trades(trades):
+
+    if not trades:
+
+        return {
+            "n": 0,
+            "win": np.nan,
+            "avg": np.nan,
+            "median": np.nan,
+            "compound": np.nan,
+        }
+
+    returns = np.array(
+        [
+            trade["net_return"]
+            for trade in trades
+        ],
+        dtype=float,
+    )
+
     return {
-        "n": int(len(vals)),
-        "compound": (float(np.prod(1.0 + vals / 100.0)) - 1.0) * 100.0,
-        "avg": float(np.mean(vals)),
-        "median": float(np.median(vals)),
-        "hit": 100.0 * float(np.mean(vals > 0)),
+        "n":
+            len(trades),
+
+        "win":
+            np.mean(
+                returns > 0
+            ),
+
+        "avg":
+            np.mean(returns),
+
+        "median":
+            np.median(returns),
+
+        "compound":
+            compound_return(trades),
     }
 
 
-def f_pct(v: Optional[float], width: int) -> str:
-    return f"{'n/a' if v is None else f'{v:+.2f}%':>{width}}"
+def format_pct(
+    value,
+    decimals=2,
+):
+
+    if pd.isna(value):
+        return "n/a"
+
+    return (
+        f"{value * 100:.{decimals}f}%"
+    )
 
 
-def f_hit(v: Optional[float]) -> str:
-    return f"{'n/a' if v is None else f'{v:.0f}%':>5}"
+# ============================================================
+# COMMON TRADE CREATION
+# ============================================================
 
+def create_trade(
+    prices,
+    timestamps,
+    entry_pos,
+    exit_pos,
+):
+    entry_price = prices[entry_pos]
+    exit_price = prices[exit_pos]
 
-def diff(a: Optional[float], b: Optional[float]) -> Optional[float]:
-    if a is None or b is None:
+    if (
+        not np.isfinite(entry_price)
+        or not np.isfinite(exit_price)
+    ):
         return None
-    return a - b
+
+    gross_return = (
+        exit_price
+        / entry_price
+        - 1.0
+    )
+
+    net_return = (
+        (1.0 + gross_return)
+        * (1.0 - FEE_PER_SIDE)
+        * (1.0 - FEE_PER_SIDE)
+        - 1.0
+    )
+
+    return {
+        "entry_time":
+            timestamps[entry_pos],
+
+        "exit_time":
+            timestamps[exit_pos],
+
+        "gross_return":
+            gross_return,
+
+        "net_return":
+            net_return,
+
+        "entry_pos":
+            entry_pos,
+
+        "exit_pos":
+            exit_pos,
+    }
+
+
+# ============================================================
+# LEVEL TRADES
+# ============================================================
+
+def get_level_trades(
+    df,
+    level_signal,
+    hold_hours,
+):
+    """
+    LEVEL:
+
+    Sobald flat und level_signal == True:
+    Einstieg.
+
+    Während eines Trades werden weitere
+    Signale ignoriert.
+    """
+
+    hold_bars = int(
+        round(
+            hold_hours
+            * 60
+            / INTERVAL_MINUTES
+        )
+    )
+
+    signals = (
+        level_signal
+        .to_numpy(dtype=bool)
+    )
+
+    prices = (
+        df[TARGET]
+        .to_numpy()
+    )
+
+    timestamps = (
+        df.index
+        .to_numpy()
+    )
+
+    trades = []
+
+    blocked_until = -1
+
+    for pos in np.flatnonzero(signals):
+
+        if pos < blocked_until:
+            continue
+
+        exit_pos = (
+            pos + hold_bars
+        )
+
+        if exit_pos >= len(df):
+            continue
+
+        trade = create_trade(
+            prices,
+            timestamps,
+            pos,
+            exit_pos,
+        )
+
+        if trade is None:
+            continue
+
+        trades.append(trade)
+
+        blocked_until = exit_pos
+
+    return trades
+
+
+# ============================================================
+# CROSS TRADES
+# ============================================================
+
+def get_cross_trades(
+    df,
+    cross_signal,
+    hold_hours,
+):
+    """
+    CROSS:
+
+    Einstieg nur beim FALSE -> TRUE Übergang.
+    """
+
+    hold_bars = int(
+        round(
+            hold_hours
+            * 60
+            / INTERVAL_MINUTES
+        )
+    )
+
+    signals = (
+        cross_signal
+        .to_numpy(dtype=bool)
+    )
+
+    prices = (
+        df[TARGET]
+        .to_numpy()
+    )
+
+    timestamps = (
+        df.index
+        .to_numpy()
+    )
+
+    trades = []
+
+    blocked_until = -1
+
+    for pos in np.flatnonzero(signals):
+
+        if pos < blocked_until:
+            continue
+
+        exit_pos = (
+            pos + hold_bars
+        )
+
+        if exit_pos >= len(df):
+            continue
+
+        trade = create_trade(
+            prices,
+            timestamps,
+            pos,
+            exit_pos,
+        )
+
+        if trade is None:
+            continue
+
+        trades.append(trade)
+
+        blocked_until = exit_pos
+
+    return trades
+
+
+# ============================================================
+# EXIT CHECK / FRESH CROSS
+# ============================================================
+
+def get_exit_check_trades(
+    df,
+    cross_signal,
+    event_window_min,
+    hold_hours,
+):
+    """
+    EXIT CHECK:
+
+    1. Erster Einstieg nur über CROSS.
+
+    2. Trade läuft für die komplette Hold-Zeit.
+
+    3. Beim EXIT wird geprüft:
+
+       Hat innerhalb des letzten EVENT WINDOWS
+       ein neuer CROSS stattgefunden?
+
+       JA:
+           sofort beim Exit erneut kaufen.
+
+       NEIN:
+           flat bleiben.
+
+    4. Sobald wieder ein neuer CROSS auftaucht,
+       wird erneut eingestiegen.
+
+    Damit wird ein dauerhaftes LEVEL != automatisch
+    als neues Event interpretiert.
+    """
+
+    hold_bars = int(
+        round(
+            hold_hours
+            * 60
+            / INTERVAL_MINUTES
+        )
+    )
+
+    event_window_bars = int(
+        round(
+            event_window_min
+            / INTERVAL_MINUTES
+        )
+    )
+
+    if event_window_bars < 1:
+        raise ValueError(
+            "Event Window muss mindestens 15 Minuten sein."
+        )
+
+    cross = (
+        cross_signal
+        .to_numpy(dtype=bool)
+    )
+
+    prices = (
+        df[TARGET]
+        .to_numpy()
+    )
+
+    timestamps = (
+        df.index
+        .to_numpy()
+    )
+
+    trades = []
+
+    pos = 0
+
+    while pos < len(df):
+
+        # ----------------------------------------------------
+        # Suche nächsten Cross
+        # ----------------------------------------------------
+
+        future_cross_positions = np.flatnonzero(
+            cross[pos:]
+        )
+
+        if len(future_cross_positions) == 0:
+            break
+
+        entry_pos = (
+            pos
+            + future_cross_positions[0]
+        )
+
+        exit_pos = (
+            entry_pos
+            + hold_bars
+        )
+
+        if exit_pos >= len(df):
+            break
+
+        trade = create_trade(
+            prices,
+            timestamps,
+            entry_pos,
+            exit_pos,
+        )
+
+        if trade is None:
+            pos = entry_pos + 1
+            continue
+
+        trades.append(trade)
+
+        # ----------------------------------------------------
+        # Exit Check
+        #
+        # Prüfe Crosses innerhalb des letzten Event Windows
+        # einschließlich des Exit-Bars.
+        # ----------------------------------------------------
+
+        window_start = max(
+            0,
+            exit_pos
+            - event_window_bars
+            + 1,
+        )
+
+        fresh_cross = np.any(
+            cross[
+                window_start:
+                exit_pos + 1
+            ]
+        )
+
+        if fresh_cross:
+
+            # Direkt am Exit wieder rein
+            pos = exit_pos
+
+        else:
+
+            # Erst wieder auf einen neuen Cross warten
+            pos = exit_pos + 1
+
+    return trades
+
+
+# ============================================================
+# BUY & HOLD
+# ============================================================
+
+def calculate_buy_hold(df):
+
+    first_price = (
+        df[TARGET].iloc[0]
+    )
+
+    last_price = (
+        df[TARGET].iloc[-1]
+    )
+
+    gross_return = (
+        last_price
+        / first_price
+        - 1.0
+    )
+
+    net_return = (
+        (1.0 + gross_return)
+        * (1.0 - FEE_PER_SIDE)
+        * (1.0 - FEE_PER_SIDE)
+        - 1.0
+    )
+
+    return net_return
+
+
+# ============================================================
+# ONE TEST
+# ============================================================
+
+def run_test(
+    df,
+    event_window_min,
+    base_threshold,
+):
+
+    signals = build_signals(
+        df=df,
+        event_window_min=
+            event_window_min,
+        base_threshold=
+            base_threshold,
+    )
+
+    level_signal = (
+        signals["level_signal"]
+    )
+
+    cross_signal = (
+        signals["cross_signal"]
+    )
+
+    raw_level_count = int(
+        level_signal.sum()
+    )
+
+    raw_cross_count = int(
+        cross_signal.sum()
+    )
+
+    print()
+    print()
+    print("=" * 115)
+    print(
+        f"EVENT WINDOW {event_window_min}m"
+        f" | BASE THRESHOLD "
+        f"{base_threshold * 100:.1f}%"
+        f" | REFS "
+        f"3/{len(REFS)}"
+    )
+    print("=" * 115)
+
+    print(
+        f"Raw Level Events : "
+        f"{raw_level_count:,}"
+    )
+
+    print(
+        f"Raw Cross Events : "
+        f"{raw_cross_count:,}"
+    )
+
+    print()
+
+    results = []
+
+    for hold_hours in HOLDS_HOURS:
+
+        # ----------------------------------------------------
+        # LEVEL
+        # ----------------------------------------------------
+
+        level_trades = (
+            get_level_trades(
+                df=df,
+                level_signal=
+                    level_signal,
+                hold_hours=
+                    hold_hours,
+            )
+        )
+
+        level_stats = (
+            summarize_trades(
+                level_trades
+            )
+        )
+
+        # ----------------------------------------------------
+        # CROSS
+        # ----------------------------------------------------
+
+        cross_trades = (
+            get_cross_trades(
+                df=df,
+                cross_signal=
+                    cross_signal,
+                hold_hours=
+                    hold_hours,
+            )
+        )
+
+        cross_stats = (
+            summarize_trades(
+                cross_trades
+            )
+        )
+
+        # ----------------------------------------------------
+        # EXIT CHECK
+        # ----------------------------------------------------
+
+        exit_check_trades = (
+            get_exit_check_trades(
+                df=df,
+                cross_signal=
+                    cross_signal,
+                event_window_min=
+                    event_window_min,
+                hold_hours=
+                    hold_hours,
+            )
+        )
+
+        exit_check_stats = (
+            summarize_trades(
+                exit_check_trades
+            )
+        )
+
+        # ----------------------------------------------------
+        # Delta
+        # ----------------------------------------------------
+
+        delta_cross_vs_level = np.nan
+        delta_exit_vs_level = np.nan
+        delta_exit_vs_cross = np.nan
+
+        if (
+            not pd.isna(
+                level_stats["compound"]
+            )
+            and
+            not pd.isna(
+                cross_stats["compound"]
+            )
+        ):
+            delta_cross_vs_level = (
+                cross_stats["compound"]
+                - level_stats["compound"]
+            )
+
+        if (
+            not pd.isna(
+                level_stats["compound"]
+            )
+            and
+            not pd.isna(
+                exit_check_stats["compound"]
+            )
+        ):
+            delta_exit_vs_level = (
+                exit_check_stats["compound"]
+                - level_stats["compound"]
+            )
+
+        if (
+            not pd.isna(
+                cross_stats["compound"]
+            )
+            and
+            not pd.isna(
+                exit_check_stats["compound"]
+            )
+        ):
+            delta_exit_vs_cross = (
+                exit_check_stats["compound"]
+                - cross_stats["compound"]
+            )
+
+        print(
+            f"{hold_hours:>4}h | "
+            f"LEVEL "
+            f"N={level_stats['n']:>3} "
+            f"W={format_pct(level_stats['win']):>7} "
+            f"Ø={format_pct(level_stats['avg']):>8} "
+            f"C={format_pct(level_stats['compound']):>10}"
+            f" || "
+            f"CROSS "
+            f"N={cross_stats['n']:>3} "
+            f"W={format_pct(cross_stats['win']):>7} "
+            f"Ø={format_pct(cross_stats['avg']):>8} "
+            f"C={format_pct(cross_stats['compound']):>10}"
+            f" || "
+            f"EXIT "
+            f"N={exit_check_stats['n']:>3} "
+            f"W={format_pct(exit_check_stats['win']):>7} "
+            f"Ø={format_pct(exit_check_stats['avg']):>8} "
+            f"C={format_pct(exit_check_stats['compound']):>10}"
+        )
+
+        results.append(
+            {
+                "event_window":
+                    event_window_min,
+
+                "threshold":
+                    base_threshold,
+
+                "hold":
+                    hold_hours,
+
+                "level":
+                    level_stats,
+
+                "cross":
+                    cross_stats,
+
+                "exit":
+                    exit_check_stats,
+
+                "delta_cross_level":
+                    delta_cross_vs_level,
+
+                "delta_exit_level":
+                    delta_exit_vs_level,
+
+                "delta_exit_cross":
+                    delta_exit_vs_cross,
+            }
+        )
+
+    return results
+
+
+# ============================================================
+# TOP RESULTS
+# ============================================================
+
+def print_top_results(
+    all_results
+):
+
+    valid = [
+        row
+        for row in all_results
+        if not pd.isna(
+            row["exit"]["compound"]
+        )
+    ]
+
+    if not valid:
+        return
+
+    valid = sorted(
+        valid,
+        key=lambda row:
+            row["exit"]["compound"],
+        reverse=True,
+    )
+
+    print()
+    print()
+    print("=" * 120)
+    print("TOP EXIT-CHECK RESULTS")
+    print("=" * 120)
+
+    print(
+        f"{'Event':>7} "
+        f"{'Base':>7} "
+        f"{'Hold':>7} "
+        f"{'N':>5} "
+        f"{'Win':>8} "
+        f"{'Avg':>9} "
+        f"{'Compound':>11} "
+        f"{'Δ vs Level':>12} "
+        f"{'Δ vs Cross':>12}"
+    )
+
+    print("-" * 120)
+
+    for row in valid[:25]:
+
+        print(
+            f"{row['event_window']:>6}m "
+            f"{row['threshold'] * 100:>6.1f}% "
+            f"{row['hold']:>6}h "
+            f"{row['exit']['n']:>5} "
+            f"{format_pct(row['exit']['win']):>8} "
+            f"{format_pct(row['exit']['avg']):>9} "
+            f"{format_pct(row['exit']['compound']):>11} "
+            f"{format_pct(row['delta_exit_level']):>12} "
+            f"{format_pct(row['delta_exit_cross']):>12}"
+        )
+
+
+# ============================================================
+# BEST RESULT FOR EACH METHOD
+# ============================================================
+
+def print_method_winners(
+    all_results
+):
+
+    print()
+    print()
+    print("=" * 120)
+    print("BEST RESULT JE METHODE")
+    print("=" * 120)
+
+    methods = [
+        ("LEVEL", "level"),
+        ("CROSS", "cross"),
+        ("EXIT CHECK", "exit"),
+    ]
+
+    for name, key in methods:
+
+        valid = [
+            row
+            for row in all_results
+            if not pd.isna(
+                row[key]["compound"]
+            )
+        ]
+
+        if not valid:
+            continue
+
+        best = max(
+            valid,
+            key=lambda row:
+                row[key]["compound"]
+        )
+
+        print(
+            f"{name:<11} | "
+            f"Event {best['event_window']}m"
+            f" | Base "
+            f"{best['threshold'] * 100:.1f}%"
+            f" | Hold "
+            f"{best['hold']}h"
+            f" | N "
+            f"{best[key]['n']}"
+            f" | Win "
+            f"{format_pct(best[key]['win'])}"
+            f" | Avg "
+            f"{format_pct(best[key]['avg'])}"
+            f" | Compound "
+            f"{format_pct(best[key]['compound'])}"
+        )
+
+
+# ============================================================
+# DIRECT HOLD-BY-HOLD COMPARISON
+# ============================================================
+
+def print_comparison_table(
+    all_results
+):
+
+    print()
+    print()
+    print("=" * 120)
+    print("METHODENVERGLEICH")
+    print("=" * 120)
+
+    print(
+        f"{'Event':>7} "
+        f"{'Base':>7} "
+        f"{'Hold':>7} "
+        f"{'Level Cmp':>11} "
+        f"{'Cross Cmp':>11} "
+        f"{'Exit Cmp':>11} "
+        f"{'Exit-Level':>12}"
+    )
+
+    print("-" * 120)
+
+    valid = [
+        row
+        for row in all_results
+        if not pd.isna(
+            row["level"]["compound"]
+        )
+    ]
+
+    # Pro Event/Threshold nur die besten Holds
+    # für Exit-Check anzeigen.
+    valid = sorted(
+        valid,
+        key=lambda row: (
+            row["event_window"],
+            row["threshold"],
+            row["hold"],
+        )
+    )
+
+    for row in valid:
+
+        print(
+            f"{row['event_window']:>6}m "
+            f"{row['threshold'] * 100:>6.1f}% "
+            f"{row['hold']:>6}h "
+            f"{format_pct(row['level']['compound']):>11} "
+            f"{format_pct(row['cross']['compound']):>11} "
+            f"{format_pct(row['exit']['compound']):>11} "
+            f"{format_pct(row['delta_exit_level']):>12}"
+        )
 
 
 # ============================================================
 # MAIN
 # ============================================================
 
-def parse_cli_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Event-Modus-Vergleich level vs cross (optionale Overrides)")
-    p.add_argument("--refs", "--ref", nargs="+", default=None, metavar="COIN",
-                   help=f"Referenzcoins (Default: {' '.join(REF_SYMBOLS)})")
-    p.add_argument("--target", "--coin", default=None, metavar="COIN",
-                   help=f"Ziel-Coin (Default: {TARGET_SYMBOL})")
-    p.add_argument("--verify-detect", action="store_true", default=None,
-                   help="Level-Events gegen Original-Detektion prüfen (langsam)")
-    add_time_range_arguments(p)
-    return p.parse_args(argv)
+def main():
 
+    print()
+    print("=" * 80)
+    print("MULTI-REF: LEVEL vs CROSS vs EXIT CHECK")
+    print("=" * 80)
 
-def main(argv: Optional[List[str]] = None) -> None:
-    t_start = time.time()
-    args = parse_cli_args(argv)
-    apply_config_to_base()
-
-    refs_raw = list(dict.fromkeys(str(x).strip().upper() for x in (args.refs or REF_SYMBOLS)))
-    target_raw = args.target or TARGET_SYMBOL
-    verify = VERIFY_DETECT if args.verify_detect is None else True
-
-    usdt_set = base.binance_usdt_symbols()
-    ref_bases: List[str] = []
-    ref_pairs: Dict[str, str] = {}
-    for raw in refs_raw:
-        b, pair = base.resolve_pair(raw, usdt_set)
-        if b not in ref_bases:
-            ref_bases.append(b)
-            ref_pairs[b] = pair
-    target_base, target_pair = base.resolve_pair(target_raw, usdt_set)
-    if target_base in ref_bases:
-        raise SystemExit(f"Target {target_base} darf nicht gleichzeitig Referenz sein.")
-    if max(MIN_REFS) > len(ref_bases):
-        raise SystemExit("MIN_REFS größer als Anzahl Refs.")
-
-    start, end, _ = resolve_event_window(
-        from_s=args.from_date or FROM_DATE,
-        to_s=args.to_date or TO_DATE,
-        lookback_days=args.lookback,
-        default_lookback=LOOKBACK_DAYS,
+    print(
+        "EXIT CHECK:"
     )
-    end = base.clamp_end_to_closed_candle(end)
-    start_ms = base.utc_ms(start)
-    end_ms = base.utc_ms(end)
-    fetch_end_ms = base.utc_ms(end + pd.Timedelta(minutes=base.MAX_HOLD_MIN))
 
-    print("\n" + "=" * 132)
-    print("EVENT-MODUS-VERGLEICH | LEVEL vs CROSS | Multi-Ref -> Single Target")
-    print("=" * 132)
-    print(f"Refs:       {', '.join(ref_bases)}")
-    print(f"Target:     {target_base} ({target_pair})")
-    print(f"Windows:    {', '.join(str(w) + 'm' for w in EVENT_WINDOWS_MIN)}")
-    print(f"Thresholds: {', '.join(f'{x:g}%' for x in THRESHOLDS_PCT)}")
-    print("Min Refs:   " + ", ".join(base.min_ref_label(x, len(ref_bases)) for x in MIN_REFS))
-    print(f"Richtungen: {', '.join(DIRECTIONS)} (beide = BUY Target)")
-    print(f"Holds:      {', '.join(HOLD_HORIZONS)}")
-    print(f"Zeitraum:   {start.strftime('%Y-%m-%d %H:%M %Z')} -> {end.strftime('%Y-%m-%d %H:%M %Z')} (Europe/Berlin)")
-    print(f"Interval:   {KLINE_INTERVAL} | Fee: {FEE_BPS} bps/Seite | Slippage: {SLIPPAGE_BPS} bps")
-    print("level = jede Kerze mit erfüllter Bedingung | cross = nur Neueintritt (vorherige Kerze nicht erfüllt)")
-    print("Non-overlap je Hold, Re-Entry exakt am Hold-Ende erlaubt | exakte Entry-/Exit-Kerze")
-    print("=" * 132)
-
-    # ---------------- Daten ----------------
-    print("\n1) Lade Referenzcoins:")
-    ref_data: Dict[str, pd.DataFrame] = {}
-    for b in ref_bases:
-        pair = ref_pairs[b]
-        print(f"   {b:>8} ({pair}) ...", end="", flush=True)
-        df = base.fetch_klines(pair, KLINE_INTERVAL, start_ms, end_ms)
-        if df.empty:
-            raise SystemExit(f"\nKeine Kerzen für Referenz {pair}.")
-        ref_data[b] = df
-        print(f" {len(df)} Kerzen")
-
-    print(f"\n2) Lade Target {target_pair} ...")
-    target_df = base.fetch_klines(target_pair, KLINE_INTERVAL, start_ms, fetch_end_ms)
-    if target_df.empty:
-        raise SystemExit(f"Keine Kerzen für Target {target_pair}.")
-    print(f"   {len(target_df)} Kerzen")
-
-    bh = base.buy_and_hold(target_df, start_ms, end_ms)
-    block_period = base._block_range(*base._effective_range_ms(
-        start_ms,
-        end_ms,
-        target_df["open_time"].to_numpy(),
-        *[d["open_time"].to_numpy() for d in ref_data.values()],
-    ))
-
-    # ---------------- Events ----------------
-    print("\n3) Erzeuge Events (level + cross) ...")
-    level, cross = detect_level_and_cross(ref_data, start_ms, end_ms)
-    print(f"   level: {sum(len(v) for v in level.values())} Events | "
-          f"cross: {sum(len(v) for v in cross.values())} Events | {len(level)} Konfigurationen")
-    if verify:
-        verify_against_base(level, ref_data, ref_pairs, start_ms, end_ms)
-
-    # ---------------- Trades + Stats ----------------
-    print("\n4) Simuliere Trades ...")
-    results: Dict[Key, Dict[str, Tuple[dict, dict]]] = {}
-    for key, evs in level.items():
-        # Cross-Events sind eine Teilmenge der Level-Events: Trades je Event
-        # einmal rechnen (identische Entry-/Exit-Logik), dann filtern.
-        trades_level = base.simulate_events(target_df, evs, target_pair)
-        cross_times = cross[key]
-        trades_cross = [t for t in trades_level if int(t["event_time_ms"]) in cross_times]
-        results[key] = {
-            h: (stats_for(trades_level, h), stats_for(trades_cross, h))
-            for h in HOLD_HORIZONS
-        }
-
-    # ---------------- Ausgabe je Variante ----------------
-    print("\n5) Ergebnisse je Variante (L = level, C = cross, Δ = cross − level)")
-    if bh:
-        print(f"   B&H {target_base}: {base.fmt_pct(bh['roi'])} | {bh['buy_time']} -> {bh['sell_time']} (Kerzen-Close)")
-
-    head = (
-        f"{'Refs':>10} {'Hold':>5} | "
-        f"{'n L':>5} {'Cmp L':>10} {'Ø L':>8} {'Med L':>8} {'Hit L':>5} | "
-        f"{'n C':>5} {'Cmp C':>10} {'Ø C':>8} {'Med C':>8} {'Hit C':>5} | "
-        f"{'ΔCmp':>10} {'ΔØ':>8} {'besser':>6}"
+    print(
+        "  Initial entry = CROSS"
     )
-    tally = {"total": 0, "level": 0, "cross": 0, "equal": 0, "no_trades": 0}
-    tally_avg = {"level": 0, "cross": 0, "equal": 0}
-    by_dir = {d: {"level": 0, "cross": 0, "equal": 0} for d in DIRECTIONS}
 
-    for direction in DIRECTIONS:
-        for window in EVENT_WINDOWS_MIN:
-            for threshold in THRESHOLDS_PCT:
-                print("\n" + "=" * 132)
-                print(f"{target_pair} | {direction} | Event {window}m | Threshold {threshold:g}% | {block_period}")
-                print("=" * 132)
-                print(head)
-                print("-" * 132)
-                for min_refs in MIN_REFS:
-                    key = (direction, window, threshold, min_refs)
-                    label = base.min_ref_label(min_refs, len(ref_bases))
-                    for h in HOLD_HORIZONS:
-                        L, C = results[key][h]
-                        tally["total"] += 1
-                        better = "-"
-                        if L["n"] == 0 or C["n"] == 0:
-                            tally["no_trades"] += 1
-                        else:
-                            a, b = C[PRIMARY_METRIC], L[PRIMARY_METRIC]
-                            if abs(a - b) < 1e-12:
-                                better = "="
-                                tally["equal"] += 1
-                                by_dir[direction]["equal"] += 1
-                            elif a > b:
-                                better = "C"
-                                tally["cross"] += 1
-                                by_dir[direction]["cross"] += 1
-                            else:
-                                better = "L"
-                                tally["level"] += 1
-                                by_dir[direction]["level"] += 1
-                            if abs(C["avg"] - L["avg"]) < 1e-12:
-                                tally_avg["equal"] += 1
-                            elif C["avg"] > L["avg"]:
-                                tally_avg["cross"] += 1
-                            else:
-                                tally_avg["level"] += 1
-                        print(
-                            f"{label:>10} {h:>5} | "
-                            f"{L['n']:>5} {f_pct(L['compound'], 10)} {f_pct(L['avg'], 8)} "
-                            f"{f_pct(L['median'], 8)} {f_hit(L['hit'])} | "
-                            f"{C['n']:>5} {f_pct(C['compound'], 10)} {f_pct(C['avg'], 8)} "
-                            f"{f_pct(C['median'], 8)} {f_hit(C['hit'])} | "
-                            f"{f_pct(diff(C['compound'], L['compound']), 10)} "
-                            f"{f_pct(diff(C['avg'], L['avg']), 8)} {better:>6}"
-                        )
+    print(
+        "  Beim Exit wird geprüft, ob "
+        "im letzten Event Window ein neuer CROSS "
+        "stattgefunden hat."
+    )
 
-    # ---------------- Zusammenfassung ----------------
-    compared = tally["total"] - tally["no_trades"]
-    print("\n" + "=" * 132)
-    print(f"ZUSAMMENFASSUNG | {target_pair} | {block_period}")
-    print("=" * 132)
-    print(f"Varianten gesamt: {tally['total']} | verglichen (beide n>0): {compared} | "
-          f"ohne Trades in mind. einem Modus: {tally['no_trades']}")
-    print(f"Nach Compound ({'primär' if PRIMARY_METRIC == 'compound' else 'sekundär'}): "
-          f"cross besser {tally['cross'] if PRIMARY_METRIC == 'compound' else '-'} | "
-          f"level besser {tally['level'] if PRIMARY_METRIC == 'compound' else '-'} | "
-          f"gleich {tally['equal'] if PRIMARY_METRIC == 'compound' else '-'}")
-    print(f"Nach Ø ROI je Trade: cross besser {tally_avg['cross']} | level besser {tally_avg['level']} | "
-          f"gleich {tally_avg['equal']}")
-    for d in DIRECTIONS:
-        x = by_dir[d]
-        print(f"  {d:<4} ({PRIMARY_METRIC}): cross besser {x['cross']} | level besser {x['level']} | gleich {x['equal']}")
-    print(f"Laufzeit: {(time.time() - t_start) / 60:.1f} min")
-    print("=" * 132)
+    print(
+        "  Falls ja -> direkt neuer Trade."
+    )
+
+    print(
+        "  Falls nein -> warten auf neuen CROSS."
+    )
+
+    # --------------------------------------------------------
+    # Download
+    # --------------------------------------------------------
+
+    data = load_all_data()
+
+    # --------------------------------------------------------
+    # Dataframe
+    # --------------------------------------------------------
+
+    df = build_dataframe(
+        data
+    )
+
+    print()
+    print("=" * 80)
+    print("DATASET")
+    print("=" * 80)
+
+    print(
+        f"Rows  : {len(df):,}"
+    )
+
+    print(
+        f"Start : {df.index.min()}"
+    )
+
+    print(
+        f"End   : {df.index.max()}"
+    )
+
+    # --------------------------------------------------------
+    # Volatility
+    # --------------------------------------------------------
+
+    df = add_volatility_data(
+        df
+    )
+
+    if USE_VOL_ADAPTIVE_THRESHOLD:
+
+        valid_vol = (
+            df["vol_factor"]
+            .dropna()
+        )
+
+        print()
+        print("=" * 80)
+        print("VOLATILITY")
+        print("=" * 80)
+
+        print(
+            f"Median Vol Factor : "
+            f"{valid_vol.median():.2f}"
+        )
+
+        print(
+            f"Min Vol Factor    : "
+            f"{valid_vol.min():.2f}"
+        )
+
+        print(
+            f"Max Vol Factor    : "
+            f"{valid_vol.max():.2f}"
+        )
+
+    # --------------------------------------------------------
+    # Benchmark
+    # --------------------------------------------------------
+
+    buy_hold = (
+        calculate_buy_hold(df)
+    )
+
+    print()
+    print("=" * 80)
+    print("BENCHMARK")
+    print("=" * 80)
+
+    print(
+        f"{TARGET} Buy & Hold: "
+        f"{format_pct(buy_hold)}"
+    )
+
+    # --------------------------------------------------------
+    # Tests
+    # --------------------------------------------------------
+
+    all_results = []
+
+    for event_window in (
+        EVENT_WINDOWS_MIN
+    ):
+
+        for threshold in (
+            BASE_THRESHOLDS
+        ):
+
+            results = run_test(
+                df=df,
+                event_window_min=
+                    event_window,
+                base_threshold=
+                    threshold,
+            )
+
+            all_results.extend(
+                results
+            )
+
+    # --------------------------------------------------------
+    # Summary
+    # --------------------------------------------------------
+
+    print_comparison_table(
+        all_results
+    )
+
+    print_top_results(
+        all_results
+    )
+
+    print_method_winners(
+        all_results
+    )
+
+    print()
+    print("=" * 80)
+    print("ENDE")
+    print("=" * 80)
+    print()
 
 
 if __name__ == "__main__":

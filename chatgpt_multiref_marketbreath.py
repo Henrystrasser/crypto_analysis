@@ -55,13 +55,6 @@ BREADTH_UNIVERSE = [
     "XLMUSDT",
     "ATOMUSDT",
     "NEARUSDT",
-    "UNIUSDT",
-    "FILUSDT",
-    "AAVEUSDT",
-    "ALGOUSDT",
-    "VETUSDT",
-    "EOSUSDT",
-    "TRXUSDT",
 ]
 
 # Breadth definition:
@@ -73,6 +66,9 @@ BREADTH_RETURN_THRESHOLD = 0.0
 
 # We test several minimum breadth levels
 BREADTH_MIN_LEVELS = [
+    0.1,
+    0.2,
+    0.3,
     0.50,   # >= 50% positive
     0.60,   # >= 60% positive
     0.70,   # >= 70% positive
@@ -81,13 +77,13 @@ BREADTH_MIN_LEVELS = [
 
 # Require at least this many valid breadth coins at a timestamp.
 # Normally all 20 should be available.
-MIN_BREADTH_SYMBOLS = 18
+MIN_BREADTH_SYMBOLS = 10
 
 # ------------------------------------------------------------
 # TIMEFRAME
 # ------------------------------------------------------------
 
-INTERVAL = "15m"
+INTERVAL = "1h"
 
 START_DATE = "2024-01-01"
 END_DATE = None
@@ -108,7 +104,6 @@ FEE_PER_SIDE = 0.00075      # 7.5 bps = 0.075%
 # ------------------------------------------------------------
 
 EVENT_WINDOWS_MIN = [
-    30,
     60,
     120,
     240,
@@ -203,11 +198,19 @@ def get_last_closed_candle_ms():
 
 def fetch_klines(symbol, start_ms, end_ms):
     """
-    Robust Binance kline pagination.
+    Robuster Binance-Kline-Downloader mit:
+    - Session
+    - automatischen Retries
+    - exponentiellem Backoff
+    - höherem Timeout
     """
 
     all_rows = []
     current = start_ms
+
+    session = requests.Session()
+
+    max_retries = 8
 
     while current < end_ms:
 
@@ -219,15 +222,98 @@ def fetch_klines(symbol, start_ms, end_ms):
             "limit": 1000,
         }
 
-        response = requests.get(
-            API_URL,
-            params=params,
-            timeout=30,
-        )
+        success = False
 
-        response.raise_for_status()
+        for attempt in range(1, max_retries + 1):
 
-        rows = response.json()
+            try:
+
+                response = session.get(
+                    API_URL,
+                    params=params,
+                    timeout=(10, 60),
+                )
+
+                response.raise_for_status()
+
+                rows = response.json()
+
+                success = True
+                break
+
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError,
+            ) as e:
+
+                if attempt >= max_retries:
+
+                    raise RuntimeError(
+                        f"{symbol}: Download nach "
+                        f"{max_retries} Versuchen fehlgeschlagen.\n"
+                        f"Letzter Fehler: {e}"
+                    ) from e
+
+                wait_seconds = min(
+                    2 ** (attempt - 1),
+                    30,
+                )
+
+                print(
+                    f"      Verbindung verloren "
+                    f"(Versuch {attempt}/{max_retries}). "
+                    f"Retry in {wait_seconds}s ..."
+                )
+
+                time.sleep(wait_seconds)
+
+            except requests.exceptions.HTTPError as e:
+
+                status = (
+                    response.status_code
+                    if "response" in locals()
+                    else None
+                )
+
+                # Bei Rate Limit / Serverfehler ebenfalls warten
+                if status in (
+                    418,
+                    429,
+                    500,
+                    502,
+                    503,
+                    504,
+                ):
+
+                    if attempt >= max_retries:
+
+                        raise RuntimeError(
+                            f"{symbol}: HTTP {status} "
+                            f"nach {max_retries} Versuchen."
+                        ) from e
+
+                    wait_seconds = min(
+                        2 ** attempt,
+                        60,
+                    )
+
+                    print(
+                        f"      Binance HTTP {status} "
+                        f"(Versuch {attempt}/{max_retries}). "
+                        f"Retry in {wait_seconds}s ..."
+                    )
+
+                    time.sleep(wait_seconds)
+
+                else:
+
+                    raise
+
+        if not success:
+            raise RuntimeError(
+                f"{symbol}: Request fehlgeschlagen."
+            )
 
         if not rows:
             break
@@ -249,8 +335,8 @@ def fetch_klines(symbol, start_ms, end_ms):
         if len(rows) < 1000:
             break
 
-        # Small delay to be friendly to API rate limits
-        time.sleep(0.05)
+        # Kleine Pause zwischen Requests
+        time.sleep(0.15)
 
     if not all_rows:
         return pd.DataFrame()
@@ -305,8 +391,8 @@ def fetch_klines(symbol, start_ms, end_ms):
         "open_time"
     )
 
-    df.index = df.index.tz_convert(BERLIN)
     return df
+
 
 
 # ============================================================

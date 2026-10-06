@@ -1,0 +1,294 @@
+##### grand_offset fix test 2026-09-29 16:38:33 CEST
+Kopien in /tmp mit geänderten Parametern; Datei-Defaults unverändert (2025-04-15..2025-05-01, Lookback 10, 210 Symbole)
+
+##### RUN A_new
+Config: erste 25 Symbole, 2025-04-15..2025-05-01, Lookback 10, 12h, fee 0.075%
+Version: new (new = working tree, old = HEAD ced90ef)
+2025-04-15  -  2025-05-01
+
+Tägliches Walk-Forward für 25 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: XRP/USDT       ... letzter Offset 06:00 Berlin | Strat -3.09% | Hold +3.72% | Edge -6.81% | Trades 16 | übersprungen (Overlap) 1 | Offsets [9, 9, 9, 9, 9, 2, 2, 2, 2, 0, 3, 4, 22, 6, 5, 6, 6]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 2.1517 | Letzter Trade: SELL 2025-05-01 18:00 CEST @ 2.2414 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: SOL/USDT       ... letzter Offset 23:00 Berlin | Strat +4.64% | Hold +15.69% | Edge -11.05% | Trades 16 | übersprungen (Overlap) 1 | Offsets [16, 16, 9, 9, 15, 19, 1, 17, 20, 20, 20, 20, 20, 20, 22, 21, 23]
+    Erster Trade: BUY 2025-04-15 16:00 CEST @ 130.7 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 149.46 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: TRX/USDT       ... letzter Offset 08:00 Berlin | Strat -1.95% | Hold -3.28% | Edge +1.33% | Trades 15 | übersprungen (Overlap) 2 | Offsets [6, 1, 22, 2, 1, 1, 6, 2, 16, 23, 10, 7, 8, 14, 9, 8, 8]
+    Erster Trade: BUY 2025-04-15 06:00 CEST @ 0.2532 | Letzter Trade: SELL 2025-05-01 20:00 CEST @ 0.2456 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: ZEC/USDT       ... letzter Offset 03:00 Berlin | Strat -8.03% | Hold +19.38% | Edge -27.42% | Trades 16 | übersprungen (Overlap) 1 | Offsets [14, 9, 13, 15, 9, 16, 9, 16, 17, 17, 10, 13, 13, 12, 21, 21, 3]
+    Erster Trade: BUY 2025-04-15 14:00 CEST @ 31.67 | Letzter Trade: SELL 2025-05-01 09:00 CEST @ 35.74 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: HYPE/USDT      ... Keine Hold-Daten.
+Teste: DOGE/USDT      ... letzter Offset 23:00 Berlin | Strat +3.61% | Hold +14.18% | Edge -10.57% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 9, 9, 2, 9, 19, 17, 17, 19, 19, 19, 13, 16, 16, 20, 21, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 0.16006 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 0.18006 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: XMR/USDT       ... Übersprungen (zu wenig Historie).
+Teste: WBT/USDT       ... Übersprungen (zu wenig Historie).
+Teste: ADA/USDT       ... letzter Offset 23:00 Berlin | Strat -5.37% | Hold +11.93% | Edge -17.29% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 9, 9, 2, 9, 0, 2, 17, 23, 20, 20, 13, 14, 13, 21, 22, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 0.6455 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 0.7046 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: LINK/USDT      ... letzter Offset 23:00 Berlin | Strat -7.29% | Hold +17.08% | Edge -24.37% | Trades 16 | übersprungen (Overlap) 1 | Offsets [9, 9, 9, 2, 9, 0, 2, 17, 23, 0, 20, 13, 13, 13, 13, 13, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 12.73 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 14.64 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: RAIN/USDT      ... Übersprungen (zu wenig Historie).
+Teste: LEO/USDT       ... Übersprungen (zu wenig Historie).
+Teste: XLM/USDT       ... letzter Offset 06:00 Berlin | Strat +0.88% | Hold +13.89% | Edge -13.01% | Trades 17 | übersprungen (Overlap) 0 | Offsets [8, 8, 9, 9, 9, 1, 2, 2, 2, 2, 2, 6, 5, 6, 5, 6, 6]
+    Erster Trade: BUY 2025-04-15 08:00 CEST @ 0.2396 | Letzter Trade: SELL 2025-05-01 18:00 CEST @ 0.2781 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: BCH/USDT       ... letzter Offset 23:00 Berlin | Strat +0.18% | Hold +11.42% | Edge -11.24% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 9, 10, 10, 9, 7, 7, 7, 2, 20, 13, 6, 13, 13, 13, 20, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 335.1 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 368.9 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: UNI/USDT       ... letzter Offset 23:00 Berlin | Strat -14.83% | Hold -0.69% | Edge -14.14% | Trades 16 | übersprungen (Overlap) 1 | Offsets [2, 2, 9, 2, 9, 0, 2, 0, 23, 0, 17, 20, 14, 14, 14, 22, 23]
+    Erster Trade: BUY 2025-04-15 02:00 CEST @ 5.363 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 5.269 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: NEAR/USDT      ... letzter Offset 06:00 Berlin | Strat +0.43% | Hold +20.73% | Edge -20.30% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 2, 9, 2, 9, 2, 2, 2, 2, 0, 4, 6, 13, 13, 13, 13, 6]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 2.118 | Letzter Trade: SELL 2025-05-01 18:00 CEST @ 2.576 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: LTC/USDT       ... letzter Offset 13:00 Berlin | Strat +2.72% | Hold +15.33% | Edge -12.61% | Trades 16 | übersprungen (Overlap) 1 | Offsets [9, 9, 9, 0, 9, 19, 0, 17, 23, 20, 20, 13, 13, 13, 13, 22, 13]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 78.28 | Letzter Trade: SELL 2025-05-02 01:00 CEST @ 88.85 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: AVAX/USDT      ... letzter Offset 23:00 Berlin | Strat -1.86% | Hold +6.98% | Edge -8.84% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 9, 9, 9, 9, 9, 8, 0, 0, 0, 0, 6, 23, 22, 23, 22, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 19.98 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 21.33 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: CC/USDT        ... Übersprungen (zu wenig Historie).
+Teste: HBAR/USDT      ... letzter Offset 23:00 Berlin | Strat +2.91% | Hold +12.90% | Edge -9.99% | Trades 16 | übersprungen (Overlap) 1 | Offsets [2, 2, 2, 2, 1, 1, 0, 17, 20, 20, 21, 4, 6, 22, 22, 22, 23]
+    Erster Trade: BUY 2025-04-15 02:00 CEST @ 0.16466 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 0.18689 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: SUI/USDT       ... letzter Offset 23:00 Berlin | Strat +23.45% | Hold +64.40% | Edge -40.95% | Trades 17 | übersprungen (Overlap) 0 | Offsets [9, 9, 9, 9, 9, 1, 2, 0, 0, 20, 20, 21, 21, 21, 21, 21, 23]
+    Erster Trade: BUY 2025-04-15 09:00 CEST @ 2.2033 | Letzter Trade: SELL 2025-05-02 11:00 CEST @ 3.4578 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: TON/USDT       ... letzter Offset 16:00 Berlin | Strat -3.31% | Hold +11.91% | Edge -15.23% | Trades 17 | übersprungen (Overlap) 0 | Offsets [7, 3, 9, 9, 9, 9, 9, 2, 20, 20, 20, 20, 20, 13, 13, 15, 16]
+    Erster Trade: BUY 2025-04-15 07:00 CEST @ 2.927 | Letzter Trade: SELL 2025-05-02 04:00 CEST @ 3.254 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: SHIB/USDT      ... letzter Offset 16:00 Berlin | Strat -0.61% | Hold +12.55% | Edge -13.16% | Trades 17 | übersprungen (Overlap) 0 | Offsets [16, 9, 9, 0, 9, 2, 9, 16, 9, 17, 11, 13, 15, 15, 16, 16, 16]
+    Erster Trade: BUY 2025-04-15 16:00 CEST @ 1.19e-05 | Letzter Trade: SELL 2025-05-02 04:00 CEST @ 1.366e-05 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+Teste: CRO/USDT       ... Übersprungen (zu wenig Historie).
+Teste: TAO/USDT       ... letzter Offset 21:00 Berlin | Strat +17.77% | Hold +52.46% | Edge -34.69% | Trades 17 | übersprungen (Overlap) 0 | Offsets [17, 19, 19, 19, 16, 19, 19, 17, 17, 17, 17, 13, 13, 13, 13, 13, 21]
+    Erster Trade: BUY 2025-04-15 17:00 CEST @ 236.4 | Letzter Trade: SELL 2025-05-02 09:00 CEST @ 355.4 | Hold 2025-04-15 00:00 CEST -> 2025-05-02 00:00 CEST
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+     Coin Letzter Offset                                                        Beste Offsets  Tage  Trades  Übersprungen (Overlap)                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+ SUI/USDT   23:00 Berlin          [9, 9, 9, 9, 9, 1, 2, 0, 0, 20, 20, 21, 21, 21, 21, 21, 23]    17      17                       0 2025-04-03 bis 2026-09-29              23.45         64.40          64.65            -40.95
+ TAO/USDT   21:00 Berlin [17, 19, 19, 19, 16, 19, 19, 17, 17, 17, 17, 13, 13, 13, 13, 13, 21]    17      17                       0 2025-04-03 bis 2026-09-29              17.77         52.46          52.69            -34.69
+ SOL/USDT   23:00 Berlin    [16, 16, 9, 9, 15, 19, 1, 17, 20, 20, 20, 20, 20, 20, 22, 21, 23]    17      16                       1 2025-04-03 bis 2026-09-29               4.64         15.69          15.86            -11.05
+DOGE/USDT   23:00 Berlin      [9, 9, 9, 2, 9, 19, 17, 17, 19, 19, 19, 13, 16, 16, 20, 21, 23]    17      17                       0 2025-04-03 bis 2026-09-29               3.61         14.18          14.35            -10.57
+HBAR/USDT   23:00 Berlin          [2, 2, 2, 2, 1, 1, 0, 17, 20, 20, 21, 4, 6, 22, 22, 22, 23]    17      16                       1 2025-04-03 bis 2026-09-29               2.91         12.90          13.07             -9.99
+ LTC/USDT   13:00 Berlin       [9, 9, 9, 0, 9, 19, 0, 17, 23, 20, 20, 13, 13, 13, 13, 22, 13]    17      16                       1 2025-04-03 bis 2026-09-29               2.72         15.33          15.50            -12.61
+ XLM/USDT   06:00 Berlin                  [8, 8, 9, 9, 9, 1, 2, 2, 2, 2, 2, 6, 5, 6, 5, 6, 6]    17      17                       0 2025-04-03 bis 2026-09-29               0.88         13.89          14.06            -13.01
+NEAR/USDT   06:00 Berlin              [9, 2, 9, 2, 9, 2, 2, 2, 2, 0, 4, 6, 13, 13, 13, 13, 6]    17      17                       0 2025-04-03 bis 2026-09-29               0.43         20.73          20.92            -20.30
+ BCH/USDT   23:00 Berlin         [9, 9, 10, 10, 9, 7, 7, 7, 2, 20, 13, 6, 13, 13, 13, 20, 23]    17      17                       0 2025-04-03 bis 2026-09-29               0.18         11.42          11.59            -11.24
+SHIB/USDT   16:00 Berlin        [16, 9, 9, 0, 9, 2, 9, 16, 9, 17, 11, 13, 15, 15, 16, 16, 16]    17      17                       0 2025-04-03 bis 2026-09-29              -0.61         12.55          12.72            -13.16
+AVAX/USDT   23:00 Berlin             [9, 9, 9, 9, 9, 9, 8, 0, 0, 0, 0, 6, 23, 22, 23, 22, 23]    17      17                       0 2025-04-03 bis 2026-09-29              -1.86          6.98           7.14             -8.84
+ TRX/USDT   08:00 Berlin             [6, 1, 22, 2, 1, 1, 6, 2, 16, 23, 10, 7, 8, 14, 9, 8, 8]    17      15                       2 2025-04-03 bis 2026-09-29              -1.95         -3.28          -3.13              1.33
+ XRP/USDT   06:00 Berlin                 [9, 9, 9, 9, 9, 2, 2, 2, 2, 0, 3, 4, 22, 6, 5, 6, 6]    17      16                       1 2025-04-03 bis 2026-09-29              -3.09          3.72           3.88             -6.81
+ TON/USDT   16:00 Berlin         [7, 3, 9, 9, 9, 9, 9, 2, 20, 20, 20, 20, 20, 13, 13, 15, 16]    17      17                       0 2025-04-03 bis 2026-06-30              -3.31         11.91          12.08            -15.23
+ ADA/USDT   23:00 Berlin        [9, 9, 9, 2, 9, 0, 2, 17, 23, 20, 20, 13, 14, 13, 21, 22, 23]    17      17                       0 2025-04-03 bis 2026-09-29              -5.37         11.93          12.10            -17.29
+LINK/USDT   23:00 Berlin         [9, 9, 9, 2, 9, 0, 2, 17, 23, 0, 20, 13, 13, 13, 13, 13, 23]    17      16                       1 2025-04-03 bis 2026-09-29              -7.29         17.08          17.26            -24.37
+ ZEC/USDT   03:00 Berlin     [14, 9, 13, 15, 9, 16, 9, 16, 17, 17, 10, 13, 13, 12, 21, 21, 3]    17      16                       1 2025-04-03 bis 2026-09-29              -8.03         19.38          19.56            -27.42
+ UNI/USDT   23:00 Berlin          [2, 2, 9, 2, 9, 0, 2, 0, 23, 0, 17, 20, 14, 14, 14, 22, 23]    17      16                       1 2025-04-03 bis 2026-09-29             -14.83         -0.69          -0.54            -14.14
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+SUI/USDT         [9, 9, 9, 9, 9, 1, 2, 0, 0, 20, 20, 21, 21, 21, 21, 21, 23]
+TAO/USDT         [17, 19, 19, 19, 16, 19, 19, 17, 17, 17, 17, 13, 13, 13, 13, 13, 21]
+SOL/USDT         [16, 16, 9, 9, 15, 19, 1, 17, 20, 20, 20, 20, 20, 20, 22, 21, 23]
+DOGE/USDT        [9, 9, 9, 2, 9, 19, 17, 17, 19, 19, 19, 13, 16, 16, 20, 21, 23]
+HBAR/USDT        [2, 2, 2, 2, 1, 1, 0, 17, 20, 20, 21, 4, 6, 22, 22, 22, 23]
+LTC/USDT         [9, 9, 9, 0, 9, 19, 0, 17, 23, 20, 20, 13, 13, 13, 13, 22, 13]
+XLM/USDT         [8, 8, 9, 9, 9, 1, 2, 2, 2, 2, 2, 6, 5, 6, 5, 6, 6]
+NEAR/USDT        [9, 2, 9, 2, 9, 2, 2, 2, 2, 0, 4, 6, 13, 13, 13, 13, 6]
+BCH/USDT         [9, 9, 10, 10, 9, 7, 7, 7, 2, 20, 13, 6, 13, 13, 13, 20, 23]
+SHIB/USDT        [16, 9, 9, 0, 9, 2, 9, 16, 9, 17, 11, 13, 15, 15, 16, 16, 16]
+AVAX/USDT        [9, 9, 9, 9, 9, 9, 8, 0, 0, 0, 0, 6, 23, 22, 23, 22, 23]
+TRX/USDT         [6, 1, 22, 2, 1, 1, 6, 2, 16, 23, 10, 7, 8, 14, 9, 8, 8]
+XRP/USDT         [9, 9, 9, 9, 9, 2, 2, 2, 2, 0, 3, 4, 22, 6, 5, 6, 6]
+TON/USDT         [7, 3, 9, 9, 9, 9, 9, 2, 20, 20, 20, 20, 20, 13, 13, 15, 16]
+ADA/USDT         [9, 9, 9, 2, 9, 0, 2, 17, 23, 20, 20, 13, 14, 13, 21, 22, 23]
+LINK/USDT        [9, 9, 9, 2, 9, 0, 2, 17, 23, 0, 20, 13, 13, 13, 13, 13, 23]
+ZEC/USDT         [14, 9, 13, 15, 9, 16, 9, 16, 17, 17, 10, 13, 13, 12, 21, 21, 3]
+UNI/USDT         [2, 2, 9, 2, 9, 0, 2, 0, 23, 0, 17, 20, 14, 14, 14, 22, 23]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Entscheidung um 00:00 Berlin: im Lookback zählen nur Trades, deren Verkaufs-Kerze vor Mitternacht geschlossen ist (kein Lookahead). Ein Trade, dessen Kauf vor dem Verkauf des zuletzt ausgeführten Trades läge, wird übersprungen (kein Overlap). Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+
+##### CHECKS run_new
+lookback calls=7344 rows=69768 violations(sell close > decision midnight)=0 min gap close->decision=0 days 00:00:00
+final sims=18 executed=297 skipped=9 overlap violations=0 count mismatches=0 buy==prev sell cases=0
+2025-03-30 wallclock: {1: '2025-03-30 01:00:00+01:00', 2: None, 3: '2025-03-30 03:00:00+02:00'}
+2025-10-26 wallclock: {1: '2025-10-26 01:00:00+02:00', 2: '2025-10-26 02:00:00+02:00', 3: '2025-10-26 03:00:00+01:00'}
+elapsed 238.715147878s exit=0
+
+##### RUN A_old
+Config: erste 25 Symbole, 2025-04-15..2025-05-01, Lookback 10, 12h, fee 0.075%
+Version: old (new = working tree, old = HEAD ced90ef)
+2025-04-15  -  2025-05-01
+
+Tägliches Walk-Forward für 25 Coins | Lookback=10 Tage | Offsets 0-23 | Hold-Fenster 12h | 4-Nachbar-Regel
+
+Teste: XRP/USDT       ... letzter Offset 01:00 | Strat -7.05% | Hold +3.56% | Edge -10.61% | Offsets [7, 7, 7, 7, 7, 0, 0, 0, 21, 1, 1, 1, 1, 4, 4, 4, 1]
+Teste: SOL/USDT       ... letzter Offset 21:00 | Strat +10.56% | Hold +17.05% | Edge -6.50% | Offsets [14, 7, 8, 14, 14, 20, 15, 15, 18, 18, 15, 15, 18, 19, 19, 19, 21]
+Teste: TRX/USDT       ... letzter Offset 06:00 | Strat -5.32% | Hold -3.17% | Edge -2.16% | Offsets [4, 23, 21, 2, 0, 22, 4, 2, 14, 14, 8, 5, 6, 6, 7, 6, 6]
+Teste: ZEC/USDT       ... letzter Offset 01:00 | Strat -9.03% | Hold +20.20% | Edge -29.22% | Offsets [11, 7, 11, 11, 7, 14, 14, 14, 15, 11, 11, 11, 9, 19, 19, 20, 1]
+Teste: HYPE/USDT      ... Keine Hold-Daten.
+Teste: DOGE/USDT      ... letzter Offset 14:00 | Strat +4.48% | Hold +14.05% | Edge -9.57% | Offsets [7, 7, 7, 23, 7, 17, 17, 18, 18, 17, 15, 14, 14, 14, 17, 19, 14]
+Teste: XMR/USDT       ... Übersprungen (zu wenig Historie).
+Teste: WBT/USDT       ... Übersprungen (zu wenig Historie).
+Teste: ADA/USDT       ... letzter Offset 21:00 | Strat +5.39% | Hold +11.39% | Edge -6.00% | Offsets [4, 4, 7, 23, 14, 17, 22, 22, 18, 18, 19, 11, 11, 19, 19, 21, 21]
+Teste: LINK/USDT      ... letzter Offset 21:00 | Strat +0.39% | Hold +16.78% | Edge -16.39% | Offsets [4, 4, 7, 23, 7, 21, 14, 21, 21, 22, 18, 11, 11, 14, 14, 14, 21]
+Teste: RAIN/USDT      ... Übersprungen (zu wenig Historie).
+Teste: LEO/USDT       ... Übersprungen (zu wenig Historie).
+Teste: XLM/USDT       ... elapsed 900.125081380s exit=124
+
+##### RUN B_new
+Config: DST Herbst, erste 4 Symbole, 2025-10-20..2025-11-03, Lookback 10
+Version: new (new = working tree, old = HEAD ced90ef)
+2025-10-20  -  2025-11-03
+
+Tägliches Walk-Forward für 4 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: XRP/USDT       ... letzter Offset 23:00 Berlin | Strat -1.68% | Hold -4.00% | Edge +2.32% | Trades 15 | übersprungen (Overlap) 0 | Offsets [1, 8, 9, 9, 9, 2, 3, 10, 3, 5, 4, 5, 23, 23, 23]
+    Erster Trade: BUY 2025-10-20 01:00 CEST @ 2.3908 | Letzter Trade: SELL 2025-11-04 11:00 CET @ 2.2663 | Hold 2025-10-20 00:00 CEST -> 2025-11-04 00:00 CET
+Teste: SOL/USDT       ... letzter Offset 20:00 Berlin | Strat -20.76% | Hold -12.65% | Edge -8.10% | Trades 15 | übersprungen (Overlap) 0 | Offsets [7, 14, 9, 9, 6, 2, 3, 3, 3, 4, 3, 22, 21, 22, 20]
+    Erster Trade: BUY 2025-10-20 07:00 CEST @ 193.01 | Letzter Trade: SELL 2025-11-04 08:00 CET @ 157.07 | Hold 2025-10-20 00:00 CEST -> 2025-11-04 00:00 CET
+Teste: TRX/USDT       ... letzter Offset 21:00 Berlin | Strat -9.72% | Hold -12.50% | Edge +2.78% | Trades 14 | übersprungen (Overlap) 1 | Offsets [8, 16, 15, 16, 16, 0, 2, 3, 3, 4, 4, 4, 21, 22, 21]
+    Erster Trade: BUY 2025-10-20 08:00 CEST @ 0.3228 | Letzter Trade: SELL 2025-11-04 09:00 CET @ 0.2797 | Hold 2025-10-20 00:00 CEST -> 2025-11-04 00:00 CET
+Teste: ZEC/USDT       ... letzter Offset 22:00 Berlin | Strat +26.23% | Hold +79.15% | Edge -52.93% | Trades 15 | übersprungen (Overlap) 0 | Offsets [1, 9, 9, 10, 6, 2, 9, 9, 3, 3, 2, 0, 22, 20, 22]
+    Erster Trade: BUY 2025-10-20 01:00 CEST @ 235.77 | Letzter Trade: SELL 2025-11-04 10:00 CET @ 469.34 | Hold 2025-10-20 00:00 CEST -> 2025-11-04 00:00 CET
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+    Coin Letzter Offset                                        Beste Offsets  Tage  Trades  Übersprungen (Overlap)                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+ZEC/USDT   22:00 Berlin    [1, 9, 9, 10, 6, 2, 9, 9, 3, 3, 2, 0, 22, 20, 22]    15      15                       0 2025-10-08 bis 2026-09-29              26.23         79.15          79.42            -52.93
+XRP/USDT   23:00 Berlin    [1, 8, 9, 9, 9, 2, 3, 10, 3, 5, 4, 5, 23, 23, 23]    15      15                       0 2025-10-08 bis 2026-09-29              -1.68         -4.00          -3.86              2.32
+TRX/USDT   21:00 Berlin [8, 16, 15, 16, 16, 0, 2, 3, 3, 4, 4, 4, 21, 22, 21]    15      14                       1 2025-10-08 bis 2026-09-29              -9.72        -12.50         -12.37              2.78
+SOL/USDT   20:00 Berlin   [7, 14, 9, 9, 6, 2, 3, 3, 3, 4, 3, 22, 21, 22, 20]    15      15                       0 2025-10-08 bis 2026-09-29             -20.76        -12.65         -12.52             -8.10
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+ZEC/USDT         [1, 9, 9, 10, 6, 2, 9, 9, 3, 3, 2, 0, 22, 20, 22]
+XRP/USDT         [1, 8, 9, 9, 9, 2, 3, 10, 3, 5, 4, 5, 23, 23, 23]
+TRX/USDT         [8, 16, 15, 16, 16, 0, 2, 3, 3, 4, 4, 4, 21, 22, 21]
+SOL/USDT         [7, 14, 9, 9, 6, 2, 3, 3, 3, 4, 3, 22, 21, 22, 20]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Entscheidung um 00:00 Berlin: im Lookback zählen nur Trades, deren Verkaufs-Kerze vor Mitternacht geschlossen ist (kein Lookahead). Ein Trade, dessen Kauf vor dem Verkauf des zuletzt ausgeführten Trades läge, wird übersprungen (kein Overlap). Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+
+##### CHECKS dst_new
+lookback calls=1440 rows=13680 violations(sell close > decision midnight)=0 min gap close->decision=0 days 00:00:00
+final sims=4 executed=59 skipped=1 overlap violations=0 count mismatches=0 buy==prev sell cases=0
+2025-03-30 wallclock: {1: '2025-03-30 01:00:00+01:00', 2: None, 3: '2025-03-30 03:00:00+02:00'}
+2025-10-26 wallclock: {1: '2025-10-26 01:00:00+02:00', 2: '2025-10-26 02:00:00+02:00', 3: '2025-10-26 03:00:00+01:00'}
+DST-day trade row: ('2025-10-26', '02:00 CEST', '00:00Z', '2025-10-26', '13:00 CET', 2)
+DST-day trade row: ('2025-10-26', '03:00 CET', '02:00Z', '2025-10-26', '15:00 CET', 3)
+DST-day trade row: ('2025-10-26', '09:00 CET', '08:00Z', '2025-10-26', '21:00 CET', 9)
+DST-day trade row: ('2025-10-27', '03:00 CET', '02:00Z', '2025-10-27', '15:00 CET', 3)
+DST-day trade row: ('2025-10-27', '09:00 CET', '08:00Z', '2025-10-27', '21:00 CET', 9)
+DST-day trade row: ('2025-10-27', '10:00 CET', '09:00Z', '2025-10-27', '22:00 CET', 10)
+elapsed 60.223903531s exit=0
+
+##### RUN B_old
+Config: DST Herbst, erste 4 Symbole, 2025-10-20..2025-11-03, Lookback 10
+Version: old (new = working tree, old = HEAD ced90ef)
+2025-10-20  -  2025-11-03
+
+Tägliches Walk-Forward für 4 Coins | Lookback=10 Tage | Offsets 0-23 | Hold-Fenster 12h | 4-Nachbar-Regel
+
+Teste: XRP/USDT       ... letzter Offset 02:00 | Strat -5.47% | Hold -1.95% | Edge -3.52% | Offsets [23, 6, 6, 7, 21, 0, 1, 8, 4, 4, 4, 22, 22, 22, 2]
+Teste: SOL/USDT       ... letzter Offset 18:00 | Strat -12.18% | Hold -10.39% | Edge -1.79% | Offsets [5, 7, 7, 7, 0, 1, 1, 1, 1, 1, 1, 21, 21, 22, 18]
+Teste: TRX/USDT       ... letzter Offset 22:00 | Strat -9.75% | Hold -12.34% | Edge +2.59% | Offsets [8, 12, 11, 14, 15, 22, 1, 22, 2, 2, 2, 22, 22, 22, 22]
+Teste: ZEC/USDT       ... letzter Offset 17:00 | Strat +42.09% | Hold +79.30% | Edge -37.21% | Offsets [23, 7, 7, 7, 1, 0, 0, 8, 1, 1, 1, 21, 20, 17, 17]
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 4-Nachbar-Regel) | inkl. Buy-and-Hold
+============================================================================================================================================
+    Coin Letzter Offset                                           Beste Offsets  Tage                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+ZEC/USDT          17:00      [23, 7, 7, 7, 1, 0, 0, 8, 1, 1, 1, 21, 20, 17, 17]    15 2025-10-08 bis 2026-09-29              42.09         79.30          79.57            -37.21
+XRP/USDT          02:00      [23, 6, 6, 7, 21, 0, 1, 8, 4, 4, 4, 22, 22, 22, 2]    15 2025-10-08 bis 2026-09-29              -5.47         -1.95          -1.80             -3.52
+TRX/USDT          22:00 [8, 12, 11, 14, 15, 22, 1, 22, 2, 2, 2, 22, 22, 22, 22]    15 2025-10-08 bis 2026-09-29              -9.75        -12.34         -12.20              2.59
+SOL/USDT          18:00       [5, 7, 7, 7, 0, 1, 1, 1, 1, 1, 1, 21, 21, 22, 18]    15 2025-10-08 bis 2026-09-29             -12.18        -10.39         -10.26             -1.79
+============================================================================================================================================
+
+Bester Offset je Handelstag (Reihenfolge = Zeitverlauf):
+
+ZEC/USDT         [23, 7, 7, 7, 1, 0, 0, 8, 1, 1, 1, 21, 20, 17, 17]
+XRP/USDT         [23, 6, 6, 7, 21, 0, 1, 8, 4, 4, 4, 22, 22, 22, 2]
+TRX/USDT         [8, 12, 11, 14, 15, 22, 1, 22, 2, 2, 2, 22, 22, 22, 22]
+SOL/USDT         [5, 7, 7, 7, 0, 1, 1, 1, 1, 1, 1, 21, 21, 22, 18]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs der 4 Nachbarstunden) und nur an diesem Tag gehandelt. Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+
+Zusammenfassung gespeichert: walkforward_summary.csv
+elapsed 302.834502825s exit=0
+
+##### RUN C_new
+Config: DST Frühjahr, erste 4 Symbole, 2025-03-26..2025-04-03, Lookback 10
+Version: new (new = working tree, old = HEAD ced90ef)
+2025-03-26  -  2025-04-03
+
+Tägliches Walk-Forward für 4 Coins | Lookback=10 Tage | Offsets 0-23 (Berlin-Zeit) | Hold-Fenster 12h | 5er-Fenster-Regel (o-2..o+2)
+
+Teste: XRP/USDT       ... letzter Offset 07:00 Berlin | Strat -18.30% | Hold -16.10% | Edge -2.19% | Trades 9 | übersprungen (Overlap) 0 | Offsets [5, 5, 5, 5, 15, 15, 15, 15, 7]
+    Erster Trade: BUY 2025-03-26 05:00 CET @ 2.4484 | Letzter Trade: SELL 2025-04-03 19:00 CEST @ 2.0201 | Hold 2025-03-26 00:00 CET -> 2025-04-04 00:00 CEST
+Teste: SOL/USDT       ... letzter Offset 04:00 Berlin | Strat -6.98% | Hold -18.66% | Edge +11.69% | Trades 6 | übersprungen (Overlap) 3 | Offsets [22, 1, 21, 1, 23, 23, 0, 0, 4]
+    Erster Trade: BUY 2025-03-26 22:00 CET @ 137.43 | Letzter Trade: SELL 2025-04-03 16:00 CEST @ 112.61 | Hold 2025-03-26 00:00 CET -> 2025-04-04 00:00 CEST
+Teste: TRX/USDT       ... letzter Offset 09:00 Berlin | Strat +5.64% | Hold +4.55% | Edge +1.09% | Trades 9 | übersprungen (Overlap) 0 | Offsets [12, 12, 12, 9, 9, 8, 9, 9, 9]
+    Erster Trade: BUY 2025-03-26 12:00 CET @ 0.2306 | Letzter Trade: SELL 2025-04-03 21:00 CEST @ 0.2358 | Hold 2025-03-26 00:00 CET -> 2025-04-04 00:00 CEST
+Teste: ZEC/USDT       ... letzter Offset 11:00 Berlin | Strat +8.42% | Hold +11.31% | Edge -2.89% | Trades 8 | übersprungen (Overlap) 1 | Offsets [18, 11, 18, 4, 12, 11, 4, 4, 11]
+    Erster Trade: BUY 2025-03-26 18:00 CET @ 37.85 | Letzter Trade: SELL 2025-04-03 23:00 CEST @ 38.95 | Hold 2025-03-26 00:00 CET -> 2025-04-04 00:00 CEST
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 5er-Fenster-Regel) | inkl. Buy-and-Hold | alle Zeiten Europe/Berlin
+============================================================================================================================================
+    Coin Letzter Offset                     Beste Offsets  Tage  Trades  Übersprungen (Overlap)                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+ZEC/USDT   11:00 Berlin [18, 11, 18, 4, 12, 11, 4, 4, 11]     9       8                       1 2025-03-14 bis 2026-09-29               8.42         11.31          11.48             -2.89
+TRX/USDT   09:00 Berlin    [12, 12, 12, 9, 9, 8, 9, 9, 9]     9       9                       0 2025-03-14 bis 2026-09-29               5.64          4.55           4.71              1.09
+SOL/USDT   04:00 Berlin   [22, 1, 21, 1, 23, 23, 0, 0, 4]     9       6                       3 2025-03-14 bis 2026-09-29              -6.98        -18.66         -18.54             11.69
+XRP/USDT   07:00 Berlin   [5, 5, 5, 5, 15, 15, 15, 15, 7]     9       9                       0 2025-03-14 bis 2026-09-29             -18.30        -16.10         -15.98             -2.19
+============================================================================================================================================
+
+Bester Offset je Handelstag (Berliner Stunde, Reihenfolge = Zeitverlauf):
+
+ZEC/USDT         [18, 11, 18, 4, 12, 11, 4, 4, 11]
+TRX/USDT         [12, 12, 12, 9, 9, 8, 9, 9, 9]
+SOL/USDT         [22, 1, 21, 1, 23, 23, 0, 0, 4]
+XRP/USDT         [5, 5, 5, 5, 15, 15, 15, 15, 7]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag (Berliner Kalendertag) wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs des 5er-Fensters Offset-2 .. Offset+2 inkl. Offset selbst, zyklisch) und nur an diesem Tag gehandelt. Entscheidung um 00:00 Berlin: im Lookback zählen nur Trades, deren Verkaufs-Kerze vor Mitternacht geschlossen ist (kein Lookahead). Ein Trade, dessen Kauf vor dem Verkauf des zuletzt ausgeführten Trades läge, wird übersprungen (kein Overlap). Alle Uhrzeiten/Offsets in deutscher Zeit (Europe/Berlin, inkl. Sommer-/Winterzeit). Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+
+##### CHECKS dst_spring_new
+lookback calls=864 rows=8192 violations(sell close > decision midnight)=0 min gap close->decision=0 days 00:00:00
+final sims=4 executed=32 skipped=4 overlap violations=0 count mismatches=0 buy==prev sell cases=0
+2025-03-30 wallclock: {1: '2025-03-30 01:00:00+01:00', 2: None, 3: '2025-03-30 03:00:00+02:00'}
+2025-10-26 wallclock: {1: '2025-10-26 01:00:00+02:00', 2: '2025-10-26 02:00:00+02:00', 3: '2025-10-26 03:00:00+01:00'}
+DST-day trade row: ('2025-03-30', '09:00 CEST', '07:00Z', '2025-03-30', '21:00 CEST', 9)
+DST-day trade row: ('2025-03-30', '12:00 CEST', '10:00Z', '2025-03-31', '00:00 CEST', 12)
+DST-day trade row: ('2025-03-30', '15:00 CEST', '13:00Z', '2025-03-31', '03:00 CEST', 15)
+DST-day trade row: ('2025-03-30', '23:00 CEST', '21:00Z', '2025-03-31', '11:00 CEST', 23)
+DST-day trade row: ('2025-03-31', '08:00 CEST', '06:00Z', '2025-03-31', '20:00 CEST', 8)
+DST-day trade row: ('2025-03-31', '11:00 CEST', '09:00Z', '2025-03-31', '23:00 CEST', 11)
+DST-day trade row: ('2025-03-31', '15:00 CEST', '13:00Z', '2025-04-01', '03:00 CEST', 15)
+DST-day trade row: ('2025-03-31', '23:00 CEST', '21:00Z', '2025-04-01', '11:00 CEST', 23)
+elapsed 58.970514160s exit=0
+
+##### RUN C_old
+Config: DST Frühjahr, erste 4 Symbole, 2025-03-26..2025-04-03, Lookback 10
+Version: old (new = working tree, old = HEAD ced90ef)
+2025-03-26  -  2025-04-03
+
+Tägliches Walk-Forward für 4 Coins | Lookback=10 Tage | Offsets 0-23 | Hold-Fenster 12h | 4-Nachbar-Regel
+
+Teste: XRP/USDT       ... letzter Offset 05:00 | Strat -17.31% | Hold -16.58% | Edge -0.73% | Offsets [4, 4, 4, 4, 14, 14, 15, 8, 5]
+Teste: SOL/USDT       ... letzter Offset 05:00 | Strat -13.14% | Hold -19.65% | Edge +6.51% | Offsets [0, 0, 0, 0, 0, 0, 22, 23, 5]
+Teste: TRX/USDT       ... letzter Offset 07:00 | Strat +4.25% | Hold +4.55% | Edge -0.29% | Offsets [12, 12, 11, 8, 8, 4, 8, 8, 7]
+Teste: ZEC/USDT       ... letzter Offset 05:00 | Strat +5.82% | Hold +5.56% | Edge +0.26% | Offsets [17, 10, 10, 10, 11, 11, 11, 5, 5]
+
+============================================================================================================================================
+ TÄGLICHES WALK-FORWARD (Lookback 10d, 4-Nachbar-Regel) | inkl. Buy-and-Hold
+============================================================================================================================================
+    Coin Letzter Offset                      Beste Offsets  Tage                 Daten von  Strategie ROI (%)  Hold ROI (%)  Hold Kurs (%)  Edge vs Hold (%)
+ZEC/USDT          05:00 [17, 10, 10, 10, 11, 11, 11, 5, 5]     9 2025-03-14 bis 2026-09-29               5.82          5.56           5.72              0.26
+TRX/USDT          07:00     [12, 12, 11, 8, 8, 4, 8, 8, 7]     9 2025-03-14 bis 2026-09-29               4.25          4.55           4.70             -0.29
+SOL/USDT          05:00      [0, 0, 0, 0, 0, 0, 22, 23, 5]     9 2025-03-14 bis 2026-09-29             -13.14        -19.65         -19.53              6.51
+XRP/USDT          05:00     [4, 4, 4, 4, 14, 14, 15, 8, 5]     9 2025-03-14 bis 2026-09-29             -17.31        -16.58         -16.46             -0.73
+============================================================================================================================================
+
+Bester Offset je Handelstag (Reihenfolge = Zeitverlauf):
+
+ZEC/USDT         [17, 10, 10, 10, 11, 11, 11, 5, 5]
+TRX/USDT         [12, 12, 11, 8, 8, 4, 8, 8, 7]
+SOL/USDT         [0, 0, 0, 0, 0, 0, 22, 23, 5]
+XRP/USDT         [4, 4, 4, 4, 14, 14, 15, 8, 5]
+============================================================================================================================================
+Hinweis: Für jeden Handelstag wird der beste Offset aus den letzten 10 Tagen bestimmt (Score = Summe der ROIs der 4 Nachbarstunden) und nur an diesem Tag gehandelt. Kapital wird über die Tage fortgeschrieben. Hold kauft zum ersten Close im Gesamtfenster und verkauft zum letzten, mit derselben fee_rate auf beiden Seiten.
+
+Zusammenfassung gespeichert: walkforward_summary.csv
+elapsed 295.108514627s exit=0
