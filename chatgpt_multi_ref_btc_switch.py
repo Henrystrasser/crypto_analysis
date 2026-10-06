@@ -150,7 +150,7 @@ from laggard_common import add_time_range_arguments, ms_to_berlin_str, resolve_e
 
 REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH","XRP","BNB"]
 
-TARGET_SYMBOL = "PEPE"
+TARGET_SYMBOL = "ENA"
 
 
 
@@ -1493,6 +1493,26 @@ def buy_and_hold_target_btc(
         "buy_time": _fmt_ts(entry_ts),
         "sell_time": _fmt_ts(exit_ts),
     }
+
+
+def _effective_range_ms(start_ms: int, end_ms: int, *time_arrays: np.ndarray) -> tuple[int, int]:
+    """Return the common timestamp range available across all supplied series."""
+    lo = int(start_ms)
+    hi = int(end_ms)
+    for arr in time_arrays:
+        a = np.asarray(arr, dtype=np.int64)
+        if a.size == 0:
+            return lo, lo
+        lo = max(lo, int(a.min()))
+        hi = min(hi, int(a.max()))
+    return lo, hi
+
+
+def _block_range(start_ms: int, end_ms: int) -> str:
+    """Format an effective backtest range for section headers."""
+    if end_ms < start_ms:
+        return "kein gemeinsamer Zeitraum"
+    return f"{_fmt_ts(start_ms)} -> {_fmt_ts(end_ms)}"
 
 
 def print_section(
