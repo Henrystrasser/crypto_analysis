@@ -1054,9 +1054,10 @@ def main(argv: Optional[List[str]] = None) -> None:
 
     start_ms = utc_ms(start)
     end_ms = utc_ms(end)
-    fetch_end_ms = utc_ms(
-        end + pd.Timedelta(minutes=MAX_HOLD_MIN)
-    )
+    # Kein Nachladen über TO_DATE hinaus: kein Trade darf nach dem
+    # Enddatum schließen. Strategie, RANDOM und HODL enden am selben Punkt
+    # (Close der letzten Kerze mit open_time <= end_ms).
+    fetch_end_ms = end_ms
 
     print("\n" + "=" * 118)
     print("MULTI-REFERENCE BUY BACKTEST")
@@ -1125,6 +1126,7 @@ def main(argv: Optional[List[str]] = None) -> None:
                 f"\nKeine Kerzen für Referenz {pair}."
             )
 
+        df = df[df["open_time"] <= end_ms].reset_index(drop=True)
         ref_data[base] = df
 
         print(f" {len(df)} Kerzen")
@@ -1141,6 +1143,9 @@ def main(argv: Optional[List[str]] = None) -> None:
         start_ms,
         fetch_end_ms,
     )
+
+    # Target-Daten auf <= Enddatum begrenzen (Exits nie nach TO_DATE).
+    target_df = target_df[target_df["open_time"] <= end_ms].reset_index(drop=True)
 
     if target_df.empty:
         raise SystemExit(
