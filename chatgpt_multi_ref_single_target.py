@@ -73,24 +73,25 @@ from laggard_common import add_time_range_arguments, ms_to_berlin_str, resolve_e
 # CONFIG
 # ============================================================
 
-REF_SYMBOLS: List[str] = ["BTC", "SOL", "ETH","XRP","BNB"]
-TARGET_SYMBOL = "ENA"
+REF_SYMBOLS: List[str] = ["BTC", "ETH","XRP","SOL"]
+TARGET_SYMBOL = "AAVE"
 
 # Mehrere Event-Fenster testen.
-EVENT_WINDOWS_MIN = [60,120,180]
+EVENT_WINDOWS_MIN = [120,180]
 
 # Schwellen separat testen, damit Nachbarn gut sichtbar sind.
-THRESHOLDS_PCT = [1.0, 1.5,2.0,3.0]
+THRESHOLDS_PCT = [ 1.5,2,2.5]
 
 # Wie viele Referenzcoins müssen gleichzeitig in dieselbe Richtung laufen?
 # Bei 3 Refs:
 #   1 = ANY
 #   2 = 2/3
 #   3 = ALL
-MIN_REFS = [1, 2, 3,4,5]
+MIN_REFS = [2,3,4]
 
 # Holds sind jeweils eigenständige Strategien.
 HOLD_HORIZONS: Dict[str, int] = {
+    "1h":60,
     "3h": 180,
     "6h": 360,
     "12h": 720,
@@ -107,7 +108,7 @@ HOLD_HORIZONS: Dict[str, int] = {
     "192h": 11520,
 }
 
-FROM_DATE: Optional[str] = "2025-01-01"
+FROM_DATE: Optional[str] = "2024-01-01"
 TO_DATE: Optional[str] = "2026-12-28"
 LOOKBACK_DAYS = 400
 
