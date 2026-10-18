@@ -372,89 +372,66 @@ def detect_multi_ref_events(
     """
 
     # Alle Referenzen müssen gemeinsame Kerzenzeiten besitzen.
-    common_times: Optional[set[int]] = None
+    # Vektorisiert: gemeinsame Zeiten per np.intersect1d, Bewegungen je Ref
+    # als Matrix (Zeit x Ref). Ergebnis identisch zur früheren Schleife.
+    refs = list(ref_data)
+    common: Optional[np.ndarray] = None
     for df in ref_data.values():
-        times = set(int(x) for x in df["open_time"].tolist())
-        common_times = times if common_times is None else common_times & times
+        t = df["open_time"].to_numpy(dtype=np.int64)
+        common = np.unique(t) if common is None else np.intersect1d(common, t)
 
-    if not common_times:
+    if common is None or len(common) == 0:
         return {}
 
-    common_times = {
-        t for t in common_times
-        if start_ms <= t <= end_ms
-    }
+    common = common[(common >= start_ms) & (common <= end_ms)]
 
-    move_by_ref: Dict[str, Dict[int, pd.Series]] = {}
+    # Position der ersten Kerze mit open_time == t je Ref.
+    ref_pos: Dict[str, np.ndarray] = {}
     for ref, df in ref_data.items():
-        move_by_ref[ref] = build_reference_move_series(df, windows)
+        uniq, first = np.unique(df["open_time"].to_numpy(dtype=np.int64), return_index=True)
+        ref_pos[ref] = first[np.searchsorted(uniq, common)]
 
     events: Dict[Tuple[int, float, int, str], List[MultiRefEvent]] = {}
 
     for window in windows:
+        bars = WINDOW_BARS[window]
+        cols = []
+        for ref in refs:
+            mv = (ref_data[ref]["close"].pct_change(bars) * 100.0).to_numpy(dtype=np.float64)
+            cols.append(mv[ref_pos[ref]])
+        M = np.column_stack(cols) if cols else np.empty((len(common), 0))
+        ok = ~np.isnan(M).any(axis=1)
+
         for threshold in thresholds:
+            up_mask = M >= threshold
+            dn_mask = M <= -threshold
+            up_cnt = up_mask.sum(axis=1)
+            dn_cnt = dn_mask.sum(axis=1)
+
             for min_refs in min_refs_list:
-                for direction in ("UP", "DOWN"):
-                    events[(window, threshold, min_refs, direction)] = []
-
-                for t in sorted(common_times):
-                    moves: Dict[str, float] = {}
-
-                    for ref in ref_data:
-                        df = ref_data[ref]
-                        # Index lookup via search is avoided by creating maps.
-                        # Data is 1h and common timestamps, so exact match is expected.
-                        row_idx = df.index[df["open_time"] == t]
-                        if len(row_idx) == 0:
-                            continue
-
-                        pos = int(row_idx[0])
-                        value = move_by_ref[ref][window].iloc[pos]
-
-                        if pd.notna(value):
-                            moves[ref] = float(value)
-
-                    if len(moves) != len(ref_data):
-                        continue
-
-                    up_refs = [
-                        ref for ref, move in moves.items()
-                        if move >= threshold
-                    ]
-                    down_refs = [
-                        ref for ref, move in moves.items()
-                        if move <= -threshold
-                    ]
-
-                    if len(up_refs) >= min_refs:
-                        events[
-                            (window, threshold, min_refs, "UP")
-                        ].append(
-                            MultiRefEvent(
-                                end_ms=t,
-                                direction="UP",
-                                window_min=window,
-                                threshold_pct=threshold,
-                                min_refs=min_refs,
-                                ref_moves=moves,
-                                matched_refs=up_refs,
-                            )
-                        )
-
-                    if len(down_refs) >= min_refs:
-                        events[
-                            (window, threshold, min_refs, "DOWN")
-                        ].append(
-                            MultiRefEvent(
-                                end_ms=t,
-                                direction="DOWN",
-                                window_min=window,
-                                threshold_pct=threshold,
-                                min_refs=min_refs,
-                                ref_moves=moves,
-                                matched_refs=down_refs,
-                            )
-                        )
+                ev_up: List[MultiRefEvent] = []
+                ev_dn: List[MultiRefEvent] = []
+                hit = ok & ((up_cnt >= min_refs) | (dn_cnt >= min_refs))
+                for i in np.flatnonzero(hit):
+                    row = M[i]
+                    moves = {ref: float(row[k]) for k, ref in enumerate(refs)}
+                    t = int(common[i])
+                    if up_cnt[i] >= min_refs:
+                        ev_up.append(MultiRefEvent(
+                            end_ms=t, direction="UP", window_min=window,
+                            threshold_pct=threshold, min_refs=min_refs,
+                            ref_moves=moves,
+                            matched_refs=[r for k, r in enumerate(refs) if up_mask[i, k]],
+                        ))
+                    if dn_cnt[i] >= min_refs:
+                        ev_dn.append(MultiRefEvent(
+                            end_ms=t, direction="DOWN", window_min=window,
+                            threshold_pct=threshold, min_refs=min_refs,
+                            ref_moves=moves,
+                            matched_refs=[r for k, r in enumerate(refs) if dn_mask[i, k]],
+                        ))
+                events[(window, threshold, min_refs, "UP")] = ev_up
+                events[(window, threshold, min_refs, "DOWN")] = ev_dn
 
     return events
 
@@ -490,17 +467,15 @@ def roi_for_hold(
 ) -> Optional[float]:
     # Exit exakt auf der Kerze entry_time + Hold (keine Index-Verschiebung
     # über Datenlücken hinweg). Fehlt sie -> None.
-    entry_time = int(df["open_time"].iat[entry_pos])
-    exit_pos = exact_position(
-        df,
-        entry_time + int(hold_bars) * int(BAR_MIN) * 60_000,
-    )
-
-    if exit_pos is None:
+    times = df["open_time"].to_numpy(dtype=np.int64)
+    closes = df["close"].to_numpy(dtype=np.float64)
+    exit_t = int(times[entry_pos]) + int(hold_bars) * int(BAR_MIN) * 60_000
+    exit_pos = int(np.searchsorted(times, exit_t))
+    if exit_pos >= len(times) or int(times[exit_pos]) != exit_t:
         return None
 
-    entry = float(df.iloc[entry_pos]["close"])
-    exit_ = float(df.iloc[exit_pos]["close"])
+    entry = float(closes[entry_pos])
+    exit_ = float(closes[exit_pos])
 
     if entry <= 0 or exit_ <= 0:
         return None
@@ -509,24 +484,62 @@ def roi_for_hold(
     return (sell / buy - 1.0) * 100.0
 
 
+def _hold_rois(
+    times: np.ndarray,
+    closes: np.ndarray,
+    entry_pos: np.ndarray,
+    hold_bars: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """ROI je Entry-Position für einen Hold (vektorisiert, gleiche Regeln
+    wie roi_for_hold). Rückgabe: (roi, gültig)."""
+    n = len(times)
+    exit_t = times[entry_pos] + int(hold_bars) * int(BAR_MIN) * 60_000
+    xp = np.searchsorted(times, exit_t)
+    xpc = np.minimum(xp, n - 1)
+    ok = (xp < n) & (times[xpc] == exit_t)
+    entry = closes[entry_pos]
+    exit_ = closes[xpc]
+    ok &= ~(entry <= 0) & ~(exit_ <= 0)
+    cost = (FEE_BPS + SLIPPAGE_BPS) / 10_000.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        roi = ((exit_ * (1.0 - cost)) / (entry * (1.0 + cost)) - 1.0) * 100.0
+    return roi, ok
+
+
 def simulate_events(
     target_df: pd.DataFrame,
     events: List[MultiRefEvent],
     target_pair: str,
 ) -> List[dict]:
     trades: List[dict] = []
+    if not events or target_df.empty:
+        return trades
 
-    for event in events:
-        entry_pos = exact_position(target_df, event.end_ms)
+    # Alle Events auf einmal: Entry exakt auf open_time == event.end_ms
+    # (kein Vorwärtssuchen), Exit exakt auf entry + Hold.
+    times = target_df["open_time"].to_numpy(dtype=np.int64)
+    closes = target_df["close"].to_numpy(dtype=np.float64)
+    n = len(times)
+    ev_t = np.fromiter((int(e.end_ms) for e in events), dtype=np.int64, count=len(events))
+    pos = np.searchsorted(times, ev_t)
+    posc = np.minimum(pos, n - 1)
+    found = (pos < n) & (times[posc] == ev_t) & ~(closes[posc] <= 0)
 
-        if entry_pos is None:
-            continue
+    sel = np.flatnonzero(found)
+    if len(sel) == 0:
+        return trades
+    entry_pos = posc[sel]
+    hold_res = {
+        hname: _hold_rois(times, closes, entry_pos, bars)
+        for hname, bars in HOLD_BARS.items()
+    }
+    buy_factor = 1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0
 
-        entry_time = int(target_df.iloc[entry_pos]["open_time"])
-        entry_price = float(target_df.iloc[entry_pos]["close"])
-
-        if entry_price <= 0:
-            continue
+    for j, k in enumerate(sel):
+        event = events[k]
+        p = int(entry_pos[j])
+        entry_time = int(times[p])
+        entry_price = float(closes[p])
 
         row = {
             "coin": target_pair,
@@ -541,15 +554,13 @@ def simulate_events(
             # Anzeige als Kerzen-CLOSE (Kauf zum Close dieser Kerze).
             "buy_time": ms_to_berlin_str(entry_time + int(BAR_MIN) * 60_000),
             "ref_moves": event.ref_moves,
-            "buy_price": entry_price * (
-                1.0 + (FEE_BPS + SLIPPAGE_BPS) / 10_000.0
-            ),
+            "buy_price": entry_price * buy_factor,
         }
 
         any_ok = False
 
-        for hname, bars in HOLD_BARS.items():
-            roi = roi_for_hold(target_df, entry_pos, bars)
+        for hname, (roi_arr, ok_arr) in hold_res.items():
+            roi = float(roi_arr[j]) if ok_arr[j] else None
             row[f"roi_{hname}"] = roi
             if roi is not None:
                 any_ok = True
