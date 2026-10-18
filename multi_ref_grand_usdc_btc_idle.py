@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Multi-Reference Grand | Vergleich Idle-USDC vs Idle-BTC
+Multi-Reference Grand | Vergleich Idle-USDT vs Idle-BTC
 =======================================================
 
 Gleiche Logik wie chatgpt_multi_ref_single_target_grand:
   Multi-Ref Events → Target, beste Variante nach Compound.
 
 Zusätzlich wird für die beste Variante jedes Targets der Compound
-berechnet, wenn zwischen den Trades BTC gehalten wird (statt Cash/USDC).
+berechnet, wenn zwischen den Trades BTC gehalten wird (statt Cash/USDT).
+Gehandelt werden USDT-Paare.
 
-Sortierung nach USDC-Idle-Compound.
+Sortierung nach USDT-Idle-Compound.
 """
 
 from __future__ import annotations
 
-import argparse
 import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
@@ -25,7 +25,7 @@ import pandas as pd
 import requests
 
 import chatgpt_multi_ref_single_target as base
-from laggard_common import add_time_range_arguments, resolve_event_window
+from laggard_common import resolve_event_window
 
 
 # ============================================================
@@ -97,7 +97,6 @@ def progress_bar(current: int, total: int, prefix: str = "", length: int = 30) -
     print(f"\r{prefix} |{bar}| {pct:5.1f}% ({current}/{total})", end="", flush=True)
     if current >= total:
         print()
-    return datetime.fromtimestamp(ms / 1000.0, tz=BERLIN).strftime("%Y-%m-%d")
 
 
 def effective_range_ms(start_ms: int, end_ms: int, *time_arrays) -> Tuple[int, int]:
@@ -168,56 +167,41 @@ def build_universe(top_n: int, ref_bases: List[str], usdt_set: set):
     return targets, skipped, source
 
 
-def compound_btc_idle(target_df: pd.DataFrame, btc_df: pd.DataFrame,
-                      events: list, hold_min: int, start_ms: int, end_ms: int) -> Optional[float]:
-    """Compound der Strategie, wenn zwischen Trades BTC gehalten wird."""
-    if not events:
+def compound_btc_idle(btc_df: pd.DataFrame, kept_trades: List[dict], hold_name: str,
+                      start_ms: int, end_ms: int) -> Optional[float]:
+    """Compound der Strategie, wenn zwischen den Trades BTC gehalten wird.
+
+    Verwendet exakt dieselben Trades wie der USDT-Compound (base.summarize:
+    non-overlapping, Re-Entry genau beim Exit erlaubt). Zwischen den Trades
+    und vor dem ersten / nach dem letzten Trade liegt das Kapital in BTC,
+    über genau den Zeitraum start..end (BTC-Close, keine Kerze nach end).
+    """
+    if len(kept_trades) < MIN_TRADES:
         return None
-    trades = base.simulate_events(target_df, events, "")  # pair unused for timing
-    # We need the actual entry/exit times. Depending on base.simulate_events return format
-    # we fall back to a simple walk if the structure is known.
-    # For robustness we recompute using price series.
-    t_times = target_df["open_time"].to_numpy(np.int64)
-    t_closes = target_df["close"].to_numpy(np.float64)
-    b_times = btc_df["open_time"].to_numpy(np.int64)
-    b_closes = btc_df["close"].to_numpy(np.float64)
+    b = btc_df[(btc_df["open_time"] >= start_ms) & (btc_df["open_time"] <= end_ms)]
+    if b.empty:
+        return None
+    b_times = b["open_time"].to_numpy(np.int64)
+    b_closes = b["close"].to_numpy(np.float64)
 
-    # Align BTC to target times
-    b_pos = np.searchsorted(b_times, t_times)
-    b_pos = np.clip(b_pos, 0, len(b_times) - 1)
-    btc_aligned = b_closes[b_pos]
+    def btc_at(t_ms: int) -> float:
+        # BTC-Close der Kerze mit open_time == t, sonst letzte bekannte (<= t).
+        i = int(np.searchsorted(b_times, t_ms, side="right")) - 1
+        return float(b_closes[max(i, 0)])
 
-    # Simple non-overlap simulation with BTC idle
+    hold_ms = HOLD_HORIZONS[hold_name] * 60_000
+    col = f"roi_{hold_name}"
     equity = 1.0
-    n_trades = 0
-    last_idx = 0
-    hold_ms = hold_min * 60_000
-
-    for ev in events:
-        # event time – base events usually have .time or are timestamps
-        ev_t = getattr(ev, "time", None) or getattr(ev, "open_time", None) or ev
-        if not isinstance(ev_t, (int, np.integer)):
-            continue
-        e = int(np.searchsorted(t_times, ev_t))
-        if e >= len(t_times) or t_times[e] != ev_t or e <= last_idx:
-            continue
-        x = int(np.searchsorted(t_times, ev_t + hold_ms))
-        if x >= len(t_times) or t_times[x] != ev_t + hold_ms:
-            continue
-        # BTC idle
-        if e > last_idx and btc_aligned[last_idx] > 0:
-            equity *= btc_aligned[e] / btc_aligned[last_idx]
-        # Target trade with fees
-        cost = FEE_BPS / 10_000.0
-        equity *= (t_closes[x] * (1.0 - cost)) / (t_closes[e] * (1.0 + cost))
-        n_trades += 1
-        last_idx = x
-
-    if last_idx < len(t_times) - 1 and btc_aligned[last_idx] > 0:
-        equity *= btc_aligned[-1] / btc_aligned[last_idx]
-
-    if n_trades < MIN_TRADES:
-        return None
+    last_price = float(b_closes[0])          # Start: BTC ab start
+    for tr in kept_trades:
+        buy_ms = int(tr["buy_time_ms"])
+        p = btc_at(buy_ms)
+        if last_price > 0:
+            equity *= p / last_price          # BTC-Idle bis zum Entry
+        equity *= 1.0 + float(tr[col]) / 100.0  # Target-Trade (mit Fees, wie USDT)
+        last_price = btc_at(buy_ms + hold_ms)  # nach Exit wieder BTC
+    if last_price > 0:
+        equity *= float(b_closes[-1]) / last_price  # BTC bis end
     return (equity - 1.0) * 100.0
 
 
@@ -238,9 +222,10 @@ def main():
     )
     end = base.clamp_end_to_closed_candle(end)
     start_ms, end_ms = base.utc_ms(start), base.utc_ms(end)
-    fetch_end_ms = base.utc_ms(end + pd.Timedelta(minutes=base.MAX_HOLD_MIN))
+    # Keine Daten / Exits nach TO_DATE (wie btc_switch / single_target).
+    fetch_end_ms = end_ms
 
-    print("MULTI-REF GRAND | USDC-Idle vs BTC-Idle")
+    print("MULTI-REF GRAND | USDT-Idle vs BTC-Idle")
     print(f"Refs: {', '.join(ref_bases)} | MinTrades {MIN_TRADES}")
 
     print("\n1) Universe...")
@@ -252,12 +237,14 @@ def main():
     for b in ref_bases:
         print(f"   {b}", end="", flush=True)
         df = base.fetch_klines(ref_pairs[b], KLINE_INTERVAL, start_ms, end_ms)
+        df = df[df["open_time"] <= end_ms].reset_index(drop=True)
         ref_data[b] = df
         print(f" {len(df)}")
     btc_df = ref_data.get("BTC")
     if btc_df is None:
         print("   BTC extra...", end="", flush=True)
         btc_df = base.fetch_klines("BTCUSDT", KLINE_INTERVAL, start_ms, fetch_end_ms)
+        btc_df = btc_df[btc_df["open_time"] <= end_ms].reset_index(drop=True)
         print(f" {len(btc_df)}")
 
     print("\n3) Events...")
@@ -276,6 +263,7 @@ def main():
         except Exception:
             print(" load error")
             continue
+        tdf = tdf[tdf["open_time"] <= end_ms].reset_index(drop=True)
         if tdf.empty:
             print(" empty")
             continue
@@ -295,30 +283,30 @@ def main():
                             s = stats[h]
                             if s["n"] < MIN_TRADES or s["compound"] is None:
                                 continue
-                            hold_min = HOLD_HORIZONS[h]
-                            btc_cmp = compound_btc_idle(tdf, btc_df, events, hold_min, start_ms, end_ms)
                             cand = {
                                 "direction": direction, "window": window,
                                 "threshold": threshold, "min_refs": min_refs,
                                 "hold": h, "n": s["n"],
                                 "compound_usdc": s["compound"],
-                                "compound_btc": btc_cmp,
+                                "trades": trades,
                             }
                             if best is None or cand["compound_usdc"] > best["compound_usdc"]:
                                 best = cand
         if best is None:
             print(" no variant")
             continue
+        kept = base.filter_non_overlapping(best.pop("trades"), best["hold"])
+        best["compound_btc"] = compound_btc_idle(btc_df, kept, best["hold"], start_ms, end_ms)
         rows.append({"pair": tpair, "best": best})
         btc_s = f"{best['compound_btc']:+.1f}%" if best["compound_btc"] is not None else "n/a"
-        print(f" USDC {best['compound_usdc']:+.1f}% | BTC-Idle {btc_s}")
+        print(f" USDT {best['compound_usdc']:+.1f}% | BTC-Idle {btc_s}")
 
     rows.sort(key=lambda r: r["best"]["compound_usdc"], reverse=True)
     print("\n" + "=" * 110)
-    print("BESTE VARIANTE | sortiert nach USDC-Idle")
+    print(f"BESTE VARIANTE | sortiert nach USDT-Idle | from {start:%Y-%m-%d} to {end:%Y-%m-%d}")
     print("=" * 110)
     print(f"{'#':>3} {'Coin':<12} {'Dir':<5} {'Win':>5} {'Thr':>6} {'Refs':>6} {'Hold':>6} "
-          f"{'n':>5} {'USDC':>9} {'BTC-Idle':>10} {'Δ':>8}")
+          f"{'n':>5} {'USDT':>9} {'BTC-Idle':>10} {'Δ':>8}")
     print("-" * 85)
     for i, r in enumerate(rows, 1):
         b = r["best"]
@@ -330,7 +318,7 @@ def main():
               f"{b['threshold']:>5.1f}% {b['min_refs']}/{len(ref_bases):<2} {b['hold']:>6} "
               f"{b['n']:>5} {b['compound_usdc']:>+8.1f}% {btc_s:>10} {delta:>8}")
     print("-" * 85)
-    print("USDC = nur Trade-Returns | BTC-Idle = Trades + BTC zwischen den Trades")
+    print("USDT = nur Trade-Returns (Kapital zwischen Trades in USDT) | BTC-Idle = gleiche Trades + BTC zwischen den Trades (ohne Fees für BTC-Wechsel)")
     print(f"Fertig in {time.time()-t0:.0f}s")
 
 
