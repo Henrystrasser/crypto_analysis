@@ -255,7 +255,7 @@ BERLIN = ZoneInfo(
 # TARGET
 # ============================================================
 
-TARGET_SYMBOL = "AAVEUSDT"
+TARGET_SYMBOL = "XLMUSDT"
 
 
 # ============================================================
@@ -265,7 +265,6 @@ TARGET_SYMBOL = "AAVEUSDT"
 REF_SYMBOLS = [
     "BTC",
     "ETH",
-    "SOL",
     "XRP",
 ]
 
@@ -292,7 +291,7 @@ QUORUMS = None
 # ZEITRAUM
 # ============================================================
 
-FROM_DATE = "2022-01-01"
+FROM_DATE = "2024-01-01"
 
 # None = letzte vollständig abgeschlossene 15m-Kerze
 TO_DATE = None
@@ -316,6 +315,8 @@ EVENT_WINDOWS_MIN = [
 
 EVENT_THRESHOLDS_PCT = [
     1.0,
+    1.5,
+    1.75,
     2.0,
 ]
 

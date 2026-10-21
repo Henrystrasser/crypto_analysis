@@ -216,7 +216,7 @@ HOLD_HORIZONS: Dict[str, int] = {
 
 
 
-FROM_DATE: Optional[str] = "2025-01-01"
+FROM_DATE: Optional[str] = "2024-01-01"
 
 TO_DATE: Optional[str] = "2026-12-28"
 

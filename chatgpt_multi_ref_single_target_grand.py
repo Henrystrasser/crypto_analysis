@@ -54,7 +54,7 @@ from laggard_common import add_time_range_arguments, resolve_event_window
 
 # Zeitraum (Europe/Berlin). TO_DATE=None -> bis jetzt.
 # FROM_DATE=None -> LOOKBACK_DAYS rückwärts ab jetzt.
-FROM_DATE: Optional[str] = "2026-06-01"
+FROM_DATE: Optional[str] = "2024-01-01"
 TO_DATE: Optional[str] = "2026-12-28"
 LOOKBACK_DAYS = 400
 
@@ -65,11 +65,11 @@ TOP_N = 30
 MIN_TRADES = 20
 
 # --- Grid / Refs: Default = Werte aus chatgpt_multi_ref_single_target.py ---
-REF_SYMBOLS: List[str] = ["BTC", "SOL", "XRP","ETH"]
+REF_SYMBOLS: List[str] = ["BTC", "ETH","BCH","DOGE","TRX","SOL"]
 
-EVENT_WINDOWS_MIN: List[int] = [60, 180]
+EVENT_WINDOWS_MIN: List[int] = [60]
 
-THRESHOLDS_PCT: List[float] = [1.0, 2.0]
+THRESHOLDS_PCT: List[float] = [1.0,1.5, 2.0]
 
 # Wie viele Refs müssen gleichzeitig in dieselbe Richtung laufen?
 MIN_REFS: List[int] = [1, 2, 3, 4]
